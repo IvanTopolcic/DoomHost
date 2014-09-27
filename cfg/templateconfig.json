@@ -1,0 +1,31 @@
+{
+    "zandronum" : {
+        "executable" : "zandronum",
+        "min_port" : 10000,
+        "max_port" : 10100,
+        "iwad_directory": "iwads/",
+        "wad_directory" : "wads/",
+        "cfg_directory" : "cfgs/",
+        "log_directory" : "logs/"
+    },
+
+    "network" : {
+        "ip_address" : "127.0.0.1",
+        "port" : 23456,
+        "buffer" : 1024
+    },
+
+    "mysql" : {
+        "ip_address" : "127.0.0.1",
+        "port" : 12345,
+        "username" : "username",
+        "password" : "password",
+        "database" : "database"
+    },
+
+    "advanced" : {
+        "cpu_check_interval" : 0.5,
+        "cpu_threshold" : 1,
+        "mem_threshold" : 1
+    }
+}

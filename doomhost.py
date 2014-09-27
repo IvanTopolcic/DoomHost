@@ -18,4 +18,4 @@ import net.huffman
 
 
 if __name__ == "__main__":
-    net.rcon.send_command("192.99.6.150", 15002, "b9a2f23bb0d60f6673f4258ca3171936", "say hi")
+    net.rcon.send_command("123.45.67.89", 11111, "yes", "say hi")
