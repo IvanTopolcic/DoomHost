@@ -13,9 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import net.rcon
-import net.huffman
 
-
-if __name__ == "__main__":
-    net.rcon.send_command("192.99.6.150", 15002, "b9a2f23bb0d60f6673f4258ca3171936", "say hi")
+# A quick hack to make enumerations
+def enum(**enums):
+    return type('Enum', (), enums)
