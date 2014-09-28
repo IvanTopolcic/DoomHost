@@ -56,7 +56,7 @@ __SQF = enum(NAME=0x00000001,
 
 # The information we want from a server
 __SQF_DESIRED_FLAGS = __SQF.MAPNAME | __SQF.MAXCLIENTS | __SQF.MAXPLAYERS | __SQF.PWADS | __SQF.GAMETYPE | \
-    __SQF.GAMENAME | __SQF.IWAD | __SQF.GAMESKILL | __SQF.BOTSKILL | __SQF.LIMITS
+    __SQF.GAMENAME | __SQF.IWAD | __SQF.GAMESKILL | __SQF.BOTSKILL | __SQF.LIMITS | __SQF.TEAMDAMAGE | __SQF.ALL_DMFLAGS
 
 # The gamemode enumeration
 __GAMEMODE = enum(COOPERATIVE=0, SURVIVAL=1, INVASION=2, DEATHMATCH=3, TEAMPLAY=4,
@@ -160,12 +160,14 @@ def perform_server_query(ip, port):
             if bitflags & __SQF.LIMITS:
                 fraglimit = bb.get_short_unsigned()
                 timelimit = bb.get_short_unsigned()
-                time_left_mins = bb.get_short_unsigned()
+                if timelimit > 0:
+                    time_left_mins = bb.get_short_unsigned()  # Apparently this is only sent if the time limit > 0
+                    print("TimeLeftMinutes =", time_left_mins)
                 duellimit = bb.get_short_unsigned()
                 pointlimit = bb.get_short_unsigned()
                 winlimit = bb.get_short_unsigned()
-                print("Limits: Frags =", fraglimit, ", Timelimit =", timelimit, ", TimeLeftMinutes =", time_left_mins,
-                      ", Duellimit =", duellimit, ", Pointlimit =", pointlimit, ", Winlimit =", winlimit)
+                print("Limits: Frags =", fraglimit, ", Timelimit =", timelimit, ", Duellimit =", duellimit,
+                      ", Pointlimit =", pointlimit, ", Winlimit =", winlimit)
             if bitflags & __SQF.TEAMDAMAGE:
                 teamdamagefactor = bb.get_float()
                 print("Team damage factor:", teamdamagefactor)
@@ -212,7 +214,7 @@ def perform_server_query(ip, port):
                 print("MD5 sum:", data_md5_sum)
             if bitflags & __SQF.ALL_DMFLAGS:
                 num_dm_flags = bb.get_byte()
-                dmflaglist = [0, 0, 0, 0, 0]  # DMFlags, DMFlags2, DMFlags3, CompatFlags, CompatFlags2
+                dmflaglist = [0, 0, 0, 0, 0]  # DMFlags, DMFlags2, DMFlags3/ZaDMFlags, CompatFlags, CompatFlags2/ZaComp
                 for flagindex in range(num_dm_flags):
                     dmflaglist[flagindex] = bb.get_int()
                 print("DMFlag/CompatFlag list:", dmflaglist)
