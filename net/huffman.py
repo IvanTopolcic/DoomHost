@@ -405,6 +405,5 @@ def decode(encodeddata):
 
 # Initialize huffman if it's not working already
 if not __is_initialized:
-    print("Initializing Huffman codec.")
     __init_huffman()
     __is_initialized = True

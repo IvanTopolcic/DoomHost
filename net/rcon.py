@@ -57,8 +57,8 @@ def send_command(ip, port, rconpass, command):
             rawdata = bytearray()
             rawdata.append(__CLRC.BEGINCONNECTION)
             rawdata.append(__ZAN_PROTOCOL_VERSION)
-            encodedddata = net.huffman.encode(rawdata)
-            s.sendto(encodedddata, (ip, port))
+            encodeddata = net.huffman.encode(rawdata)
+            s.sendto(encodeddata, (ip, port))
 
             # Wait for the response
             data, address = s.recvfrom(64)

@@ -13,9 +13,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import net.rcon
-import net.huffman
+import net.serverquery
 
+
+# The besthost version
+__BESTHOST_VERSION = 0.1
 
 if __name__ == "__main__":
-    net.rcon.send_command("123.45.67.89", 11111, "yes", "say hi")
+    print("BestHost version", __BESTHOST_VERSION)

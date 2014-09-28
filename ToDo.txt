@@ -1,3 +1,0 @@
-- Accounts and Permissions
-- RCON
-- Maps from wad/pk3/pk7 into a list "map01 map02 map03...etc"
