@@ -10,14 +10,14 @@
     },
 
     "network" : {
-        "ip_address" : "127.0.0.1",
+        "hostname" : "127.0.0.1",
         "port" : 23456,
-        "buffer" : 1024
+        "secret" : "fill this in with something random"
     },
 
     "mysql" : {
         "ip_address" : "127.0.0.1",
-        "port" : 12345,
+        "port" : 3306,
         "username" : "username",
         "password" : "password",
         "database" : "database"

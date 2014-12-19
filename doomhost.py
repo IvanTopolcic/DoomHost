@@ -13,11 +13,49 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import net.serverquery
+import os
+import json
+import sys
+from mysql import mysql
+from net import tcplistener
+import threading
 
 
-# The besthost version
-__BESTHOST_VERSION = 0.1
+class DoomHost:
+    def __init__(self):
+        # Attempt to load configuration file
+        try:
+            # Check to see if they specify a custom configuration file
+            if sys.argv[1] is not None:
+                config = open(sys.argv[1], 'r')
+            else:
+                config = open('config.json', 'r')
+            self.settings = json.load(config)
+            # User has not filled out the secret, generate one randomly for them
+            if self.settings['network']['secret'] == "fill this in with something random":
+                print("Please change the Network Secret in the configuration file.")
+                sys.exit(1)
+            print("Loaded configuration file.")
+        except FileNotFoundError as e:
+            print("Configuration file not found. Please create a config.json or run with: python doomhost.py your_config.json")
+            print(e)
+            sys.exit(1)
+        # Check to see if mysql database settings are correct
+        self.db = mysql.MySQL(self.settings['mysql']['hostname'],
+                                self.settings['mysql']['username'],
+                                self.settings['mysql']['password'],
+                                self.settings['mysql']['database'])
+        try:
+            self.db.connect()
+        except mysql.pymysql.MySQLError as e:
+            print("MySQL configuration error: {}".format(e))
+            sys.exit(1)
+        print("MySQL connection succeeded!")
+        # Attempt to start our TCP server
+        server = tcplistener.TCPListener(self, self.settings['network']['hostname'],
+                                                self.settings['network']['port'],
+                                                self.settings['network']['secret'])
+        threading.Thread(target=server.serve).run()
 
-if __name__ == "__main__":
-    print("BestHost version", __BESTHOST_VERSION)
+
+host = DoomHost()
