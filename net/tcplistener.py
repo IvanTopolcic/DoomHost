@@ -47,14 +47,16 @@ class TCPListener():
         while True:
             connection, address = self.socket.accept()
             if self.is_banned(address[0]):
-                connection.send(b"{'reply':'IP address is banned.'")
                 print("Banned IP {} connecting, ignoring request.".format(address[0]))
+                connection.send(b"{'status': 0, 'reply':'IP address is banned.'}")
                 connection.close()
                 continue
             try:
                 data = json.loads(connection.recv(2048).decode("UTF-8"))
             except ValueError:
                 print("Received incorrectly formatted JSON string from {}".format(address[0]))
+                connection.send(b"{'status': 0, 'reply':'Received incorrectly formatted JSON string.'}")
+                connection.close()
                 continue
             if not data:
                 break
@@ -62,9 +64,13 @@ class TCPListener():
                 if data['secret'] == self._secret:
                     # Process the packet
                     print("This is where the action will be processed (host, kill, etc) TODO")
+                    connection.send(b"{'status': 1, 'reply':'Everything looks okay!'}")
+                    connection.close()
                     None
                 else:
                     print("Incorrect secret from {}, banning address for 3 seconds.".format(address[0]))
+                    connection.send(b"{'status': 0, 'reply':'Incorrect secret received.'}")
+                    connection.close()
                     # If not already in our blacklist, ban the IP for 3 seconds
                     banned = False
                     for hostname, bantime in self._blacklist:
@@ -72,4 +78,3 @@ class TCPListener():
                             banned = True
                     if not banned:
                         self._blacklist.append((address[0], int(time.time()) + 3))
-            connection.close()
