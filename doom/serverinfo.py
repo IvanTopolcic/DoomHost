@@ -41,12 +41,12 @@ ALL_GAMEMODE_TYPES = ['deathmatch', 'cooperative', 'teamplay', 'terminator', 'po
 #   The string from the PHP encoded server message.
 #
 # THROWS:
-#   - ServerInfoParseException: Any unusual exceptions from either PHP compression,
-#                               or invalid user values. The reason will be attached
-#                               to the error message.
+#   ServerInfoParseException: Any unusual exceptions from either PHP compression,
+#                             or invalid user values. The reason will be attached
+#                             to the error message.
 #
-#   - Exception: Anything else if the string is corrupt when JSON tries to
-#                parse the string.
+#   Exception: Anything else if the string is corrupt when JSON tries to parse the
+#              string.
 class ServerInfo:
     def __init__(self, json_string):
         # If it's None, not a String, or something invalid, throw an exception
@@ -71,7 +71,7 @@ class ServerInfo:
         self.extraiwads = self.get_json_value(list, 'extraiwads', []) # For the people who want to load two iwads
         self.skill = self.get_json_value(int, 'skill', 4)
         self.data = self.get_json_value(bool, 'data', False)
-        self.config = self.get_json_value(str, 'config', '')
+        self.config = self.get_json_value(str, 'config', None)
         self.autorestart = self.get_json_value(bool, 'autorestart', False)
         self.dmflags = self.get_json_value(int, 'dmflags', 0)
         self.dmflags2 = self.get_json_value(int, 'dmflags2', 0)
@@ -87,8 +87,6 @@ class ServerInfo:
         self.pointlimit = self.get_json_value(int, 'pointlimit', 0)
         self.duellimit = self.get_json_value(int, 'duellimit', 0)
         self.timelimit = self.get_json_value(int, 'timelimit', 0)
-        self.maplist = self.get_json_value(list, 'maplist', [])
-        self.usewadmaps = self.get_json_value(bool, 'usewadmaps', True if len(self.maplist) == 0 else False) # Parse maps out of the wad if none are provided?
         self.maxclients = self.get_json_value(int, 'maxclients', 32)
         self.maxplayers = self.get_json_value(int, 'maxplayers', 32)
         self.maxlives = self.get_json_value(int, 'maxlives', 0)
@@ -96,7 +94,7 @@ class ServerInfo:
         self.password = self.get_json_value(str, 'password', None) # Connect password
         self.joinpassword = self.get_json_value(str, 'joinpassword', None)
         # If the default skill is not present, then for coop/survival/invasion should default to skill 3 (UV)
-        if 'gamemode' not in self.json_data and self.gamemode not in GAMEMODE_COOP_TYPES:
+        if 'gamemode' not in self.json_data and self.gamemode in GAMEMODE_COOP_TYPES:
             self.skill = 3
 
     # A more readable method for assigning default values if it's not in the json data.
@@ -108,26 +106,77 @@ class ServerInfo:
                 raise ServerInfoParseException('Expected json value type translation: ' + var_type)
         return self.json_data[field_name] if field_name in self.json_data else default_val
 
+    # If this server should auto restart
+    def should_autorestart(self):
+        return self.autorestart
+
     # Creates the command line string.
     #
-    #   exe_path:
-    #       The full path to the executable's folder (ex: '/home/mypath/'), should end with a slash.
-    #   binary_name:
-    #       The name of the binary (ex: zandronum-server, or zandronum.exe).
-    #   wad_path:
-    #       The full directory path to the wads (ex: /home/wads/), should end with a slash.
-    #   config_path:
-    #       The full directory path to the configs (ex: /home/configs/), should end with a slash.
-    #   use_host_arg:
-    #       If "-host" should be added to the command line (mainly for windows or a dual client/server binary).
-    def get_host_command(self, exe_path, binary_name, iwad_path, wad_path, config_path, use_host_arg = False):
+    # config_data:
+    #   The JSON config data.
+    def get_host_command(self, config_data):
         host_str = '' if sys.platform.startswith('win') else './' # Allows Linux/Windows support
-        host_str += exe_path
-        host_str += binary_name
-        if use_host_arg:
+        host_str += config_data['zandronum']['executable']
+        if config_data['zandronum']['use_host_param']:
             host_str += ' -host'
-        host_str += ' -iwad ' + iwad_path + self.iwad
-        # TODO - Left off here
+        host_str += ' +sv_hostname "' + config_data['zandronum']['host_name'] + self.hostname + '"'
+        host_str += ' -iwad ' + config_data['zandronum']['iwad_directory'] + self.iwad
+        # If the data is on, append the two wads to the wad list at the beginning as a workaround
+        if self.data:
+            self.wads.insert(0, config_data['zandronum']['skulltag_data_file'])
+            self.wads.insert(0, config_data['zandronum']['skulltag_actors_file']) # This is 2nd because we want it prepended to the very front
+        # If textcolors is on, append it to the end of the wads list
+        if self.textcolors:
+            self.wads.append(config_data['zandronum']['textcolours_file'])
+        # We need some hacky stuff to combine iwads/pwads sadly (for now)
+        if len(self.wads) > 0 or len(self.extraiwads) > 0:
+            host_str += ' -file'
+            if len(self.extraiwads) > 0:
+                for iwadfile in self.extraiwads:
+                    host_str += ' ' + config_data['zandronum']['iwad_directory'] + iwadfile + ','
+            if len(self.wads) > 0:
+                for wadfile in self.wads:
+                    host_str += ' ' + config_data['zandronum']['wad_directory'] + wadfile + ','
+            host_str = host_str[:-1] # Since we added wads, we have a trailing comma that must be removed
+        host_str += self.gamemode + ' 1'
+        host_str += ' -skill ' + str(self.skill)
+        if self.config is not None:
+            host_str += ' +exec "' + config_data['zandronum']['cfg_directory'] + self.config + '"'
+        if self.dmflags > 0:
+            host_str += ' +dmflags ' + str(self.dmflags)
+        if self.dmflags2 > 0:
+            host_str += ' +dmflags2 ' + str(self.dmflags2)
+        if self.dmflags3 > 0:
+            host_str += ' +dmflags3 ' + str(self.dmflags3)
+        if self.zadmflags > 0:
+            host_str += ' +zadmflags ' + str(self.zadmflags)
+        if self.compatflags > 0:
+            host_str += ' +compatflags ' + str(self.compatflags)
+        if self.compatflags2 > 0:
+            host_str += ' +compatflags2 ' + str(self.compatflags2)
+        if self.zacompatflags > 0:
+            host_str += ' +zacompatflags ' + str(self.zacompatflags)
+        if self.instagib:
+            host_str += ' +instagib 1'
+        if self.buckshot:
+            host_str += ' +buckshot 1'
+        if self.fraglimit > 0:
+            host_str += ' +fraglimit ' + str(self.fraglimit)
+        if self.pointlimit > 0:
+            host_str += ' +pointlimit ' + str(self.pointlimit)
+        if self.duellimit > 0:
+            host_str += ' +duellimit ' + str(self.duellimit)
+        if self.timelimit > 0:
+            host_str += ' +timelimit ' + str(self.timelimit)
+        host_str += ' +sv_maxclients ' + str(self.maxclients)
+        host_str += ' +sv_maxplayers ' + str(self.maxplayers)
+        if self.maxlives > 0:
+            host_str += ' +sv_lives ' + str(self.maxlives)
+        host_str += ' +sv_suddendeath ' + ('true' if self.suddendeath else 'false')
+        if self.password is not None:
+            host_str += ' +sv_forcepassword true +sv_password "' + self.password + '"'
+        if self.joinpassword is not None:
+            host_str += ' +sv_forcejoinpassword true +sv_joinpassword "' + self.joinpassword + '"'
         return host_str
 
 
