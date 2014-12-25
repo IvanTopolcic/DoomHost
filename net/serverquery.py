@@ -14,58 +14,67 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-from misc.enum import enum
-import net.huffman
-from net.bytebuffer import ByteBuffer, ByteBufferException
 import socket
 import struct
+import net.huffman
+from net.bytebuffer import ByteBuffer, ByteBufferException
 
 
-# The launcher challenge
-__launcher_challenge = 199
+LAUNCHER_CHALLENGE = 199
 
-# Server query flags
-__SQF = enum(NAME=0x00000001,
-             URL=0x00000002,
-             EMAIL=0x00000004,
-             MAPNAME=0x00000008,
-             MAXCLIENTS=0x00000010,
-             MAXPLAYERS=0x00000020,
-             PWADS=0x00000040,
-             GAMETYPE=0x00000080,
-             GAMENAME=0x00000100,
-             IWAD=0x00000200,
-             FORCEPASSWORD=0x00000400,
-             FORCEJOINPASSWORD=0x00000800,
-             GAMESKILL=0x00001000,
-             BOTSKILL=0x00002000,
-             DMFLAGS=0x00004000,  # Deprecated, don't use
-             LIMITS=0x00010000,
-             TEAMDAMAGE=0x00020000,
-             TEAMSCORES=0x00040000,  # Deprecated, don't use
-             NUMPLAYERS=0x00080000,
-             PLAYERDATA=0x00100000,
-             TEAMINFO_NUMBER=0x00200000,
-             TEAMINFO_NAME=0x00400000,
-             TEAMINFO_COLOR=0x00800000,
-             TEAMINFO_SCORE=0x01000000,
-             TESTING_SERVER=0x02000000,
-             DATA_MD5SUM=0x04000000,
-             ALL_DMFLAGS=0x08000000,
-             SECURITY_SETTINGS=0x10000000)
+SQF_NAME = 0x00000001
+SQF_URL = 0x00000002
+SQF_EMAIL = 0x00000004
+SQF_MAPNAME = 0x00000008
+SQF_MAXCLIENTS = 0x00000010
+SQF_MAXPLAYERS = 0x00000020
+SQF_PWADS = 0x00000040
+SQF_GAMETYPE = 0x00000080
+SQF_GAMENAME = 0x00000100
+SQF_IWAD = 0x00000200
+SQF_FORCEPASSWORD = 0x00000400
+SQF_FORCEJOINPASSWORD = 0x00000800
+SQF_GAMESKILL = 0x00001000
+SQF_BOTSKILL = 0x00002000
+SQF_DMFLAGS = 0x00004000 # Deprecated don't use
+SQF_LIMITS = 0x00010000
+SQF_TEAMDAMAGE = 0x00020000
+SQF_TEAMSCORES = 0x00040000 # Deprecated don't use
+SQF_NUMPLAYERS = 0x00080000
+SQF_PLAYERDATA = 0x00100000
+SQF_TEAMINFO_NUMBER = 0x00200000
+SQF_TEAMINFO_NAME = 0x00400000
+SQF_TEAMINFO_COLOR = 0x00800000
+SQF_TEAMINFO_SCORE = 0x01000000
+SQF_TESTING_SERVER = 0x02000000
+SQF_DATA_MD5SUM = 0x04000000
+SQF_ALL_DMFLAGS = 0x08000000
+SQF_SECURITY_SETTINGS = 0x10000000
 
 # The information we want from a server
-__SQF_DESIRED_FLAGS = __SQF.MAPNAME | __SQF.MAXCLIENTS | __SQF.MAXPLAYERS | __SQF.PWADS | __SQF.GAMETYPE | \
-    __SQF.GAMENAME | __SQF.IWAD | __SQF.GAMESKILL | __SQF.BOTSKILL | __SQF.LIMITS | __SQF.TEAMDAMAGE | __SQF.ALL_DMFLAGS
+SQF_DESIRED_FLAGS = SQF_MAPNAME | SQF_MAXCLIENTS | SQF_MAXPLAYERS | SQF_PWADS | SQF_GAMETYPE | SQF_GAMENAME | \
+                    SQF_IWAD | SQF_GAMESKILL | SQF_BOTSKILL | SQF_LIMITS | SQF_TEAMDAMAGE | SQF_ALL_DMFLAGS
 
 # The gamemode enumeration
-__GAMEMODE = enum(COOPERATIVE=0, SURVIVAL=1, INVASION=2, DEATHMATCH=3, TEAMPLAY=4,
-                  DUEL=5, TERMINATOR=6, LASTMANSTANDING=7, TEAMLMS=8, POSSESSION=9,
-                  TEAMPOSSESSION=10, TEAMGAME=11, CTF=12, ONEFLAGCTF=13, SKULLTAG=14,
-                  DOMINATION=15)
+GAMEMODE_COOPERATIVE = 0
+GAMEMODE_SURVIVAL = 1
+GAMEMODE_INVASION = 2
+GAMEMODE_DEATHMATCH = 3
+GAMEMODE_TEAMPLAY = 4
+GAMEMODE_DUEL = 5
+GAMEMODE_TERMINATOR = 6
+GAMEMODE_LASTMANSTANDING = 7
+GAMEMODE_TEAMLMS = 8
+GAMEMODE_POSSESSION = 9
+GAMEMODE_TEAMPOSSESSION = 10
+GAMEMODE_TEAMGAME = 11
+GAMEMODE_CTF = 12
+GAMEMODE_ONEFLAGCTF = 13
+GAMEMODE_SKULLTAG = 14
+GAMEMODE_DOMINATION = 15
 
 # A quick lookup for names
-__GAMEMODE_STRING = ["COOPERATIVE", "SURVIVAL", "INVASION", "DEATHMATCH", "TEAMPLAY",
+GAMEMODE_STRING = ["COOPERATIVE", "SURVIVAL", "INVASION", "DEATHMATCH", "TEAMPLAY",
                      "DUEL", "TERMINATOR", "LASTMANSTANDING", "TEAMLMS", "POSSESSION",
                      "TEAMPOSSESSION", "TEAMGAME", "CTF", "ONEFLAGCTF", "SKULLTAG",
                      "DOMINATION"]
@@ -73,7 +82,7 @@ __GAMEMODE_STRING = ["COOPERATIVE", "SURVIVAL", "INVASION", "DEATHMATCH", "TEAMP
 
 # Performs a server query by asking for the information
 def perform_server_query(ip, port):
-    querybytes = struct.pack("<LLL", __launcher_challenge, __SQF_DESIRED_FLAGS, 0)  # Last param isn't needed
+    querybytes = struct.pack("<LLL", LAUNCHER_CHALLENGE, SQF_DESIRED_FLAGS, 0)  # Last param isn't needed
     encodeddata = net.huffman.encode(querybytes)
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
         try:
@@ -105,59 +114,59 @@ def perform_server_query(ip, port):
             # Check what fields we're sent back
             bitflags = bb.get_int()
             print("Bit flags:", bitflags)
-            if bitflags & __SQF.NAME:
+            if bitflags & SQF_NAME:
                 servername = bb.get_string_null_terminated()
                 print("Server name:", servername)
-            if bitflags & __SQF.URL:
+            if bitflags & SQF_URL:
                 url = bb.get_string_null_terminated()
                 print("URL:", url)
-            if bitflags & __SQF.EMAIL:
+            if bitflags & SQF_EMAIL:
                 email = bb.get_string_null_terminated()
                 print("Email:", email)
-            if bitflags & __SQF.MAPNAME:
+            if bitflags & SQF_MAPNAME:
                 mapname = bb.get_string_null_terminated()
                 print("Map name:", mapname)
-            if bitflags & __SQF.MAXCLIENTS:
+            if bitflags & SQF_MAXCLIENTS:
                 maxclients = bb.get_byte()
                 print("Max clients:", maxclients)
-            if bitflags & __SQF.MAXPLAYERS:
+            if bitflags & SQF_MAXPLAYERS:
                 maxplayers = bb.get_byte()
                 print("Max players:", maxplayers)
-            if bitflags & __SQF.PWADS:
+            if bitflags & SQF_PWADS:
                 numpwads = bb.get_byte()
                 pwadlist = []
                 for i in range(numpwads):
                     pwadlist.append(bb.get_string_null_terminated())
                 print("Pwads:", pwadlist)
-            if bitflags & __SQF.GAMETYPE:
+            if bitflags & SQF_GAMETYPE:
                 gamemode = bb.get_byte()
                 is_instagib = bb.get_byte() > 0
                 is_buckshot = bb.get_byte() > 0
-                print("Gamemode is", __GAMEMODE_STRING[gamemode], ", Instagib:", is_instagib, ", Buckshot:", is_buckshot)
-            if bitflags & __SQF.GAMENAME:
+                print("Gamemode is", GAMEMODE_STRING[gamemode], ", Instagib:", is_instagib, ", Buckshot:", is_buckshot)
+            if bitflags & SQF_GAMENAME:
                 gamename = bb.get_string_null_terminated()
                 print("Game name:", gamename)
-            if bitflags & __SQF.IWAD:
+            if bitflags & SQF_IWAD:
                 iwad = bb.get_string_null_terminated()
                 print("Iwad:", iwad)
-            if bitflags & __SQF.FORCEPASSWORD:
+            if bitflags & SQF_FORCEPASSWORD:
                 is_force_password = bb.get_byte() > 0
                 print("Force pass:", is_force_password)
-            if bitflags & __SQF.FORCEJOINPASSWORD:
+            if bitflags & SQF_FORCEJOINPASSWORD:
                 is_force_join_password = bb.get_byte() > 0
                 print("Force join pass:", is_force_join_password)
-            if bitflags & __SQF.GAMESKILL:
+            if bitflags & SQF_GAMESKILL:
                 gameskill = bb.get_byte()
                 print("Game skill level:", gameskill)
-            if bitflags & __SQF.BOTSKILL:
+            if bitflags & SQF_BOTSKILL:
                 botskill = bb.get_byte()
                 print("Bot skill level:", botskill)
-            if bitflags & __SQF.DMFLAGS:
+            if bitflags & SQF_DMFLAGS:
                 old_dmflags = bb.get_int()
                 old_dmflags2 = bb.get_int()
                 old_compatflags = bb.get_int()
                 print("WARNING: Got deprecated flag SQF_DMFLAGS")
-            if bitflags & __SQF.LIMITS:
+            if bitflags & SQF_LIMITS:
                 fraglimit = bb.get_short_unsigned()
                 timelimit = bb.get_short_unsigned()
                 if timelimit > 0:
@@ -168,17 +177,17 @@ def perform_server_query(ip, port):
                 winlimit = bb.get_short_unsigned()
                 print("Limits: Frags =", fraglimit, ", Timelimit =", timelimit, ", Duellimit =", duellimit,
                       ", Pointlimit =", pointlimit, ", Winlimit =", winlimit)
-            if bitflags & __SQF.TEAMDAMAGE:
+            if bitflags & SQF_TEAMDAMAGE:
                 teamdamagefactor = bb.get_float()
                 print("Team damage factor:", teamdamagefactor)
-            if bitflags & __SQF.TEAMSCORES:
+            if bitflags & SQF_TEAMSCORES:
                 teamscore_red = bb.get_short()
                 teamscore_blue = bb.get_short()
                 print("WARNING: Got deprecated flag SQF_TEAMSCORES, this may not even be parsed right")
-            if bitflags & __SQF.NUMPLAYERS:
+            if bitflags & SQF_NUMPLAYERS:
                 numplayers = bb.get_byte()
                 print("Number of players:", numplayers)
-            if bitflags & __SQF.PLAYERDATA:
+            if bitflags & SQF_PLAYERDATA:
                 print("Player data for ", numplayers, " players:")
                 for p in range(numplayers):  # The server SHOULD send us SQF_NUMPLAYERS previously or else Zan is bugged
                     player_name = bb.get_string_null_terminated()
@@ -191,34 +200,34 @@ def perform_server_query(ip, port):
                     print("\tPlayer", player_name, ": points =", player_scorecount, ", ping =", player_ping,
                           ", is spec =", player_is_spec, ", is bot = ", player_is_bot, ", team =", player_team,
                           ", time in server (minutes) =", player_time_minutes)
-            if bitflags & __SQF.TEAMINFO_NUMBER:
+            if bitflags & SQF_TEAMINFO_NUMBER:
                 numteams = bb.get_byte()
                 print("Number of teams:", numteams)
-            if bitflags & __SQF.TEAMINFO_NAME or bitflags & __SQF.TEAMINFO_COLOR or bitflags & __SQF.TEAMINFO_SCORE:
+            if bitflags & SQF_TEAMINFO_NAME or bitflags & SQF_TEAMINFO_COLOR or bitflags & SQF_TEAMINFO_SCORE:
                 for i in range(numteams):
-                    if bitflags & __SQF.TEAMINFO_NAME:
+                    if bitflags & SQF_TEAMINFO_NAME:
                         team_name = bb.get_string_null_terminated()
                         print(i, " team's name:", team_name)
-                    if bitflags & __SQF.TEAMINFO_COLOR:
+                    if bitflags & SQF_TEAMINFO_COLOR:
                         team_color = bb.get_int()
                         print(i, " team's color:", team_color)
-                    if bitflags & __SQF.TEAMINFO_SCORE:
+                    if bitflags & SQF_TEAMINFO_SCORE:
                         team_score = bb.get_short()
                         print(i, " team's score:", team_score)
-            if bitflags & __SQF.TESTING_SERVER:
+            if bitflags & SQF_TESTING_SERVER:
                 is_running_custom = bb.get_byte() > 0
                 custom_binary_name = bb.get_string_null_terminated()
                 print("Running custom =", is_running_custom, "[", custom_binary_name, "]")
-            if bitflags & __SQF.DATA_MD5SUM:
+            if bitflags & SQF_DATA_MD5SUM:
                 data_md5_sum = bb.get_string_null_terminated()
                 print("MD5 sum:", data_md5_sum)
-            if bitflags & __SQF.ALL_DMFLAGS:
+            if bitflags & SQF_ALL_DMFLAGS:
                 num_dm_flags = bb.get_byte()
                 dmflaglist = [0, 0, 0, 0, 0]  # DMFlags, DMFlags2, DMFlags3/ZaDMFlags, CompatFlags, CompatFlags2/ZaComp
                 for flagindex in range(num_dm_flags):
                     dmflaglist[flagindex] = bb.get_int()
                 print("DMFlag/CompatFlag list:", dmflaglist)
-            if bitflags & __SQF.SECURITY_SETTINGS:
+            if bitflags & SQF_SECURITY_SETTINGS:
                 is_security_set = bb.get_byte() > 0
                 print("Security set:", is_security_set)
             print("Done reading, left over bytes =", bb.size())

@@ -14,33 +14,42 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import hashlib
-from misc.enum import enum
-import net.huffman
 import socket
+import net.huffman
 
 
 # Enumeration of different server rcon responses
-__SVRC = enum(OLDPROTOCOL=32, BANNED=33, SALT=34, LOGGEDIN=35, INVALIDPASSWORD=36, MESSAGE=37, UPDATE=38)
+SVRC_OLDPROTOCOL = 32
+SVRC_BANNED = 33
+SVRC_SALT = 34
+SVRC_LOGGEDIN = 35
+SVRC_INVALIDPASSWORD = 36
+SVRC_MESSAGE = 37
+SVRC_UPDATE = 38
 
-# Enumeration of
-__CLRC = enum(BEGINCONNECTION=52, PASSWORD=53, COMMAND=54, PONG=55, DISCONNECT=56)
+CLRC_BEGINCONNECTION = 52
+CLRC_PASSWORD = 53
+CLRC_COMMAND = 54
+CLRC_PONG = 55
+CLRC_DISCONNECT = 56
 
-# Enumeration of rcon updates
-__SVRCU = enum(PLAYERDATA=0, ADMINCOUNT=1, MAP=2)
+SVRCU_PLAYERDATA = 0
+SVRCU_ADMINCOUNT = 1
+SVRCU_MAP = 2
 
 # Zan protocol version
-__ZAN_PROTOCOL_VERSION = 3
+ZAN_PROTOCOL_VERSION = 3
 
 # A quick lookup table for hex characters
-__hex_lookup = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
+HEX_LOOKUP = ('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f')
 
 
 # Converst a bytearray to a string
 def __bytes_to_hexstring(bytearr):
     hexstring = ''
     for byte in bytearr:
-        hexstring += __hex_lookup[(byte >> 4) & 0x0F]
-        hexstring += __hex_lookup[byte & 0x0F]
+        hexstring += HEX_LOOKUP[(byte >> 4) & 0x0F]
+        hexstring += HEX_LOOKUP[byte & 0x0F]
     return hexstring
 
 
@@ -55,15 +64,15 @@ def send_command(ip, port, rconpass, command):
 
             # Create a byte array with the required headers
             rawdata = bytearray()
-            rawdata.append(__CLRC.BEGINCONNECTION)
-            rawdata.append(__ZAN_PROTOCOL_VERSION)
+            rawdata.append(CLRC_BEGINCONNECTION)
+            rawdata.append(ZAN_PROTOCOL_VERSION)
             encodeddata = net.huffman.encode(rawdata)
             s.sendto(encodeddata, (ip, port))
 
             # Wait for the response
             data, address = s.recvfrom(64)
             decodeddata = net.huffman.decode(data)
-            if decodeddata[0] != __SVRC.SALT:
+            if decodeddata[0] != SVRC_SALT:
                 print("Header not a salt:", decodeddata[0])
                 return False
 
@@ -85,7 +94,7 @@ def send_command(ip, port, rconpass, command):
 
             # Now send the password header + the payload
             hashedlogin = bytearray()
-            hashedlogin.append(__CLRC.PASSWORD)
+            hashedlogin.append(CLRC_PASSWORD)
             hashedlogin.extend(hashedhex.encode('ascii'))
 
             # Encode and send
@@ -95,17 +104,17 @@ def send_command(ip, port, rconpass, command):
             # Wait for the response
             data, address = s.recvfrom(2048) # Hopefully this holds whatever is sent, though it should be < 576
             decodeddata = net.huffman.decode(data)
-            if decodeddata[0] != __SVRC.LOGGEDIN:
+            if decodeddata[0] != SVRC_LOGGEDIN:
                 print("Failure logging in:", decodeddata[0])
                 return False
 
             # Send our command now
             commandtosendbytes = bytearray()
-            commandtosendbytes.append(__CLRC.COMMAND)
+            commandtosendbytes.append(CLRC_COMMAND)
             commandtosendbytes.extend(command.encode('ascii'))
             encodedcommandtosend = net.huffman.encode(commandtosendbytes)
             s.sendto(encodedcommandtosend, (ip, port))
     except socket.timeout:
-        print("Socket timed out attempting to send rcon command", command, "to", address, ":", port)
+        print("Socket timed out attempting to send rcon command", command, "to", ip, ":", port)
         return False
     return True

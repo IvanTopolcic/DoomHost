@@ -66,7 +66,6 @@ class TCPListener():
                     print("This is where the action will be processed (host, kill, etc) TODO")
                     connection.send(b"{'status': 1, 'reply':'Everything looks okay!'}")
                     connection.close()
-                    None
                 else:
                     print("Incorrect secret from {}, banning address for 3 seconds.".format(address[0]))
                     connection.send(b"{'status': 0, 'reply':'Incorrect secret received.'}")

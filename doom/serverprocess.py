@@ -13,7 +13,17 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import subprocess
 
-# A quick hack to make enumerations
-def enum(**enums):
-    return type('Enum', (), enums)
+# Starts a process from the command list
+# command_list:
+#   The commands to use, example: ['zandronum', '-host', 'cooperative 1']
+def start_server(command_list):
+    return subprocess.Popen(command_list, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+
+# NOTE: Idea inspired from: http://stackoverflow.com/questions/5173945/python-monitoring-stderr-and-stdout-of-a-subprocess
+def read_stdout_until_end(proc):
+    while proc.poll() is None:
+        line = proc.stdout.readline()
+        if line:
+            print(line) # TODO - Put reasonable stuff here later
