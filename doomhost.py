@@ -18,6 +18,7 @@ import sys
 from mysql import mysql
 from net import tcplistener
 import threading
+import atexit
 
 
 class DoomHost:
@@ -51,10 +52,19 @@ class DoomHost:
             sys.exit(1)
         print("MySQL connection succeeded!")
         # Attempt to start our TCP server
-        server = tcplistener.TCPListener(self, self.settings['network']['hostname'],
+        self.tcp_listener = tcplistener.TCPListener(self, self.settings['network']['hostname'],
                                                 self.settings['network']['port'],
                                                 self.settings['network']['secret'])
-        threading.Thread(target=server.serve).run()
+        atexit.register(_cleanup, self.tcp_listener)
+        threading.Thread(target=self.tcp_listener.serve).run()
 
+# Shutdown hook
+def _cleanup(tcp_listener):
+    tcp_listener.socket.close()
+    print("\nCleaning up...")
 
-host = DoomHost()
+try:
+    host = DoomHost()
+except KeyboardInterrupt:
+    # Ignore keyboard interrupt stacktraces
+    pass
