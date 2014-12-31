@@ -1,4 +1,7 @@
 # CUSTOM
+# Ignore IDEA settings
+.idea/
+# Ignore any local config files
 config*.json
 old/config.ini
 cfg/config.json
