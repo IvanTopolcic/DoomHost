@@ -1,4 +1,5 @@
 # CUSTOM
+config*.json
 old/config.ini
 cfg/config.json
 # Byte-compiled / optimized / DLL files
