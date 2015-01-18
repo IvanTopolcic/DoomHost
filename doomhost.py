@@ -26,7 +26,7 @@ class DoomHost:
         # Attempt to load configuration file
         try:
             # Check to see if they specify a custom configuration file
-            if sys.argv[1] is not None:
+            if len(sys.argv) > 1:
                 config = open(sys.argv[1], 'r')
             else:
                 config = open('config.json', 'r')
