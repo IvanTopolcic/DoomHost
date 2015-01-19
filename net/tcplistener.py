@@ -16,6 +16,7 @@
 import json
 import socket
 import time
+from doom import doomserver as doomserver
 
 
 class TCPListener():
@@ -46,6 +47,7 @@ class TCPListener():
         print("Listening on {}:{}".format(self._hostname, self._port))
         while True:
             connection, address = self.socket.accept()
+            print("Got something")
             if self.is_banned(address[0]):
                 print("Banned IP {} connecting, ignoring request.".format(address[0]))
                 connection.send(b"{'status': 0, 'reply':'IP address is banned.'}")
@@ -63,8 +65,11 @@ class TCPListener():
             if 'secret' in data:
                 if data['secret'] == self._secret:
                     # Process the packet
-                    print("This is where the action will be processed (host, kill, etc) TODO")
-                    connection.send(b"{'status': 1, 'reply':'Everything looks okay!'}")
+                    if data['action'] == 'host':
+                        if doomserver.is_valid_server(data):
+                            doomserver.DoomServer(data, self.doomhost)
+                        else:
+                            print("Received server host request without all information, ignoring...")
                     connection.close()
                 else:
                     print("Incorrect secret from {}, banning address for 3 seconds.".format(address[0]))

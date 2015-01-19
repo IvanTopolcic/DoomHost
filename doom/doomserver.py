@@ -15,10 +15,12 @@
 
 import json
 import sys
+from doom import serverprocess
+import threading
 
 
 # A list of all the critical fields that must be in the json file
-REQUIRED_JSON_HOST_FIELDS = ['hostname', 'iwad', 'gamemode']
+REQUIRED_JSON_HOST_FIELDS = ('hostname', 'iwad', 'gamemode')
 
 # A list of gamemodes that should not use nightmare unless the user specifically wants it
 GAMEMODE_COOP_TYPES = ['cooperative', 'survival', 'invasion']
@@ -26,7 +28,13 @@ GAMEMODE_COOP_TYPES = ['cooperative', 'survival', 'invasion']
 # A list of every gamemode type, which means any type should match up with this
 ALL_GAMEMODE_TYPES = ['deathmatch', 'cooperative', 'teamplay', 'terminator', 'possession',
                       'teampossession', 'lastmanstanding', 'ctf', 'oneflagctf', 'skulltag', 'duel',
-                      'teamgame', 'domination', 'cooperative', 'survival', 'invasion']
+                      'teamgame', 'domination', 'survival', 'invasion']
+
+# A list of every command that should be added to the server start parameters
+SERVER_HOST_FIELDS = ['hostname', 'iwad', 'gamemode', 'wads', 'extraiwads', 'skill', 'config',
+                      'autorestart', 'dmflags', 'dmflags2', 'dmflags3', 'compatflags', 'compatflags2', 'zadmflags',
+                      'zacompatflags', 'instagib', 'buckshot', 'textcolors', 'fraglimit', 'pointlimit', 'duellimit',
+                      'maxclients', 'maxplayers', 'maxlives', 'suddendeath', 'password', 'joinpassword']
 
 
 # Contains server information and populates the values based on what data is
@@ -47,63 +55,60 @@ ALL_GAMEMODE_TYPES = ['deathmatch', 'cooperative', 'teamplay', 'terminator', 'po
 #
 #   Exception: Anything else if the string is corrupt when JSON tries to parse the
 #              string.
-class ServerInfo:
-    def __init__(self, json_string):
-        # If it's None, not a String, or something invalid, throw an exception
-        if json_string is None:
-            raise ServerInfoParseException('Json string passed to ServerInfo is of type None')
-        elif type(json_string) != type(str()):
-            raise ServerInfoParseException('Json string is not a String')
-        elif len(json_string) == 0:
-            raise ServerInfoParseException('Passed ServerInfo constructor an empty String')
-        self.json_data = json.loads(json_string)
-        # These are all the values that are critical
-        for field in REQUIRED_JSON_HOST_FIELDS:
-            if field not in self.json_data:
-                raise ServerInfoParseException('Missing "' + field + '" argument from JSON data')
-        self.hostname = self.json_data['hostname']
-        self.iwad = self.json_data['iwad']
-        self.gamemode = self.json_data['gamemode']
+class DoomServer:
+    def __init__(self, json_data, doomhost):
+        self.doomhost = doomhost
+        self.parameters = []
+        self.json_data = json_data
+        self.hostname = self.json_data['host_info']['hostname']
+        self.iwad = self.json_data['host_info']['iwad']
+        self.gamemode = self.json_data['host_info']['gamemode']
         if self.gamemode not in ALL_GAMEMODE_TYPES:
-            raise ServerInfoParseException('Invalid gamemode type: ' + self.gamemode)
+            # Silently set the default gamemode type
+            self.gamemode = "coop"
         # These fields are optional and will turn to default values if not specified
-        self.wads = self.get_json_value(list, 'wads', [])
-        self.extraiwads = self.get_json_value(list, 'extraiwads', []) # For the people who want to load two iwads
-        self.skill = self.get_json_value(int, 'skill', 4)
-        self.data = self.get_json_value(bool, 'data', False)
-        self.config = self.get_json_value(str, 'config', None)
-        self.autorestart = self.get_json_value(bool, 'autorestart', False)
-        self.dmflags = self.get_json_value(int, 'dmflags', 0)
-        self.dmflags2 = self.get_json_value(int, 'dmflags2', 0)
-        self.dmflags3 = self.get_json_value(int, 'dmflags3', 0)
-        self.compatflags = self.get_json_value(int, 'compatflags', 0)
-        self.compatflags2 = self.get_json_value(int, 'compatflags2', 0)
-        self.zadmflags = self.get_json_value(int, 'zadmflags', 0)
-        self.zacompatflags = self.get_json_value(int, 'zacompatflags', 0)
-        self.instagib =  self.get_json_value(bool, 'instagib', False)
-        self.buckshot =  self.get_json_value(bool, 'buckshot', False)
-        self.textcolors = self.get_json_value(bool, 'textcolors', True)
-        self.fraglimit = self.get_json_value(int, 'fraglimit', 0)
-        self.pointlimit = self.get_json_value(int, 'pointlimit', 0)
-        self.duellimit = self.get_json_value(int, 'duellimit', 0)
-        self.timelimit = self.get_json_value(int, 'timelimit', 0)
-        self.maxclients = self.get_json_value(int, 'maxclients', 32)
-        self.maxplayers = self.get_json_value(int, 'maxplayers', 32)
-        self.maxlives = self.get_json_value(int, 'maxlives', 0)
-        self.suddendeath = self.get_json_value(bool, 'suddendeath', False)
-        self.password = self.get_json_value(str, 'password', None) # Connect password
-        self.joinpassword = self.get_json_value(str, 'joinpassword', None)
+        self.wads = self.get_host_value(list, 'wads', [])
+        self.extraiwads = self.get_host_value(list, 'extraiwads', []) # For the people who want to load two iwads
+        self.skill = self.get_host_value(int, 'skill', 4)
+        self.data = self.get_host_value(bool, 'data', False)
+        self.config = self.get_host_value(str, 'config', None)
+        self.autorestart = self.get_host_value(bool, 'autorestart', False)
+        self.dmflags = self.get_host_value(int, 'dmflags', 0)
+        self.dmflags2 = self.get_host_value(int, 'dmflags2', 0)
+        self.dmflags3 = self.get_host_value(int, 'dmflags3', 0)
+        self.compatflags = self.get_host_value(int, 'compatflags', 0)
+        self.compatflags2 = self.get_host_value(int, 'compatflags2', 0)
+        self.zadmflags = self.get_host_value(int, 'zadmflags', 0)
+        self.zacompatflags = self.get_host_value(int, 'zacompatflags', 0)
+        self.instagib = self.get_host_value(bool, 'instagib', False)
+        self.buckshot = self.get_host_value(bool, 'buckshot', False)
+        self.textcolors = self.get_host_value(bool, 'textcolors', True)
+        self.fraglimit = self.get_host_value(int, 'fraglimit', 0)
+        self.pointlimit = self.get_host_value(int, 'pointlimit', 0)
+        self.duellimit = self.get_host_value(int, 'duellimit', 0)
+        self.timelimit = self.get_host_value(int, 'timelimit', 0)
+        self.maxclients = self.get_host_value(int, 'maxclients', 32)
+        self.maxplayers = self.get_host_value(int, 'maxplayers', 32)
+        self.maxlives = self.get_host_value(int, 'maxlives', 0)
+        self.suddendeath = self.get_host_value(bool, 'suddendeath', False)
+        self.password = self.get_host_value(str, 'password', None) # Connect password
+        self.joinpassword = self.get_host_value(str, 'joinpassword', None)
         # If the default skill is not present, then for coop/survival/invasion should default to skill 3 (UV)
-        if 'gamemode' not in self.json_data and self.gamemode in GAMEMODE_COOP_TYPES:
+        if 'skill' not in self.json_data and self.gamemode in GAMEMODE_COOP_TYPES:
             self.skill = 3
+        self.host_parameters = [doomhost.settings['zandronum']['executable'], '-host']
+        self.process = serverprocess.ServerProcess(self.get_host_command())
+        threading.Thread(target=self.process.start_server())
+        threading.Thread(target=self.process.read_stdout_until_end())
 
     # A more readable method for assigning default values if it's not in the json data.
     # This is not intended for external usage outside of the class.
-    # Throws an exception if the type is incorrect.
-    def get_json_value(self, var_type, field_name, default_val):
-        if field_name in self.json_data:
-            if not isinstance(self.json_data[field_name], var_type):
-                raise ServerInfoParseException('Expected json value type translation: ' + var_type)
+    # If a value is incorrect, it will silently use the default value
+    def get_host_value(self, var_type, field_name, default_val):
+        if field_name in self.json_data['host_info']:
+            if not isinstance(self.json_data['host_info'][field_name], var_type):
+                # Silently return the default value
+                return default_val
         return self.json_data[field_name] if field_name in self.json_data else default_val
 
     # If this server should auto restart
@@ -112,36 +117,34 @@ class ServerInfo:
 
     # Creates the command line string.
     #
-    # config_data:
-    #   The JSON config data.
-    def get_host_command(self, config_data):
+    def get_host_command(self):
         host_str = '' if sys.platform.startswith('win') else './' # Allows Linux/Windows support
-        host_str += config_data['zandronum']['executable']
-        if config_data['zandronum']['use_host_param']:
+        host_str += self.doomhost.settings['zandronum']['executable']
+        if self.doomhost.settings['zandronum']['use_host_param']:
             host_str += ' -host'
-        host_str += ' +sv_hostname "' + config_data['zandronum']['host_name'] + self.hostname + '"'
-        host_str += ' -iwad ' + config_data['zandronum']['iwad_directory'] + self.iwad
+        host_str += ' +sv_hostname "' + self.doomhost.settings['zandronum']['host_name'] + self.hostname + '"'
+        host_str += ' -iwad ' + self.doomhost.settings['zandronum']['iwad_directory'] + self.iwad
         # If the data is on, append the two wads to the wad list at the beginning as a workaround
         if self.data:
-            self.wads.insert(0, config_data['zandronum']['skulltag_data_file'])
-            self.wads.insert(0, config_data['zandronum']['skulltag_actors_file']) # This is 2nd because we want it prepended to the very front
+            self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_data_file'])
+            self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_actors_file']) # This is 2nd because we want it prepended to the very front
         # If textcolors is on, append it to the end of the wads list
         if self.textcolors:
-            self.wads.append(config_data['zandronum']['textcolours_file'])
+            self.wads.append(self.doomhost.settings['zandronum']['textcolours_file'])
         # We need some hacky stuff to combine iwads/pwads sadly (for now)
         if len(self.wads) > 0 or len(self.extraiwads) > 0:
             host_str += ' -file'
             if len(self.extraiwads) > 0:
                 for iwadfile in self.extraiwads:
-                    host_str += ' ' + config_data['zandronum']['iwad_directory'] + iwadfile + ','
+                    host_str += ' ' + self.doomhost.settings['zandronum']['iwad_directory'] + iwadfile + ','
             if len(self.wads) > 0:
                 for wadfile in self.wads:
-                    host_str += ' ' + config_data['zandronum']['wad_directory'] + wadfile + ','
+                    host_str += ' ' + self.doomhost.settings['zandronum']['wad_directory'] + wadfile + ','
             host_str = host_str[:-1] # Since we added wads, we have a trailing comma that must be removed
         host_str += self.gamemode + ' 1'
         host_str += ' -skill ' + str(self.skill)
         if self.config is not None:
-            host_str += ' +exec "' + config_data['zandronum']['cfg_directory'] + self.config + '"'
+            host_str += ' +exec "' + self.doomhost.settings['zandronum']['cfg_directory'] + self.config + '"'
         if self.dmflags > 0:
             host_str += ' +dmflags ' + str(self.dmflags)
         if self.dmflags2 > 0:
@@ -179,6 +182,20 @@ class ServerInfo:
             host_str += ' +sv_forcejoinpassword true +sv_joinpassword "' + self.joinpassword + '"'
         return host_str
 
+
+# Checks to see if a server has passed all checks
+def is_valid_server(data):
+    if not has_required_fields(data):
+        return False
+    return True
+
+
+# Checks if the submitted data is fit for server creation
+def has_required_fields(data):
+    if 'host_info' in data:
+        if all(k in data['host_info'] for k in REQUIRED_JSON_HOST_FIELDS):
+            return True
+    return False
 
 # A custom exception class for any parsing errors.
 class ServerInfoParseException(Exception):

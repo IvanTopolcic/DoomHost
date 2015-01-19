@@ -42,9 +42,9 @@ class DoomHost:
             sys.exit(1)
         # Check to see if mysql database settings are correct
         self.db = mysql.MySQL(self.settings['mysql']['hostname'],
-                                self.settings['mysql']['username'],
-                                self.settings['mysql']['password'],
-                                self.settings['mysql']['database'])
+                              self.settings['mysql']['username'],
+                              self.settings['mysql']['password'],
+                              self.settings['mysql']['database'])
         try:
             self.db.connect()
         except mysql.pymysql.MySQLError as e:
