@@ -99,7 +99,6 @@ class DoomServer:
         self.host_parameters = [doomhost.settings['zandronum']['executable'], '-host']
         self.process = serverprocess.ServerProcess(self.get_host_command())
         threading.Thread(target=self.process.start_server())
-        threading.Thread(target=self.process.read_stdout_until_end())
 
     # A more readable method for assigning default values if it's not in the json data.
     # This is not intended for external usage outside of the class.
@@ -116,21 +115,24 @@ class DoomServer:
         return self.autorestart
 
     # Creates the command line string.
-    #
     def get_host_command(self):
-        host_str = '' if sys.platform.startswith('win') else './' # Allows Linux/Windows support
-        host_str += self.doomhost.settings['zandronum']['executable']
+        host_commands = []
+        host_str = self.doomhost.settings['zandronum']['executable']
+        host_commands.append(self.doomhost.settings['zandronum']['executable'])
+        host_commands.append('-host')
         if self.doomhost.settings['zandronum']['use_host_param']:
             host_str += ' -host'
         host_str += ' +sv_hostname "' + self.doomhost.settings['zandronum']['host_name'] + self.hostname + '"'
-        host_str += ' -iwad ' + self.doomhost.settings['zandronum']['iwad_directory'] + self.iwad
+        host_str += ' -iwad ' + self.doomhost.settings['zandronum']['iwad_directory'] + self.iwad + ' '
+        host_commands.append('-iwad')
+        host_commands.append(self.doomhost.settings['zandronum']['iwad_directory'] + self.iwad)
         # If the data is on, append the two wads to the wad list at the beginning as a workaround
         if self.data:
             self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_data_file'])
             self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_actors_file']) # This is 2nd because we want it prepended to the very front
         # If textcolors is on, append it to the end of the wads list
-        if self.textcolors:
-            self.wads.append(self.doomhost.settings['zandronum']['textcolours_file'])
+        # if self.textcolors:
+        #    self.wads.append(self.doomhost.settings['zandronum']['textcolours_file'])
         # We need some hacky stuff to combine iwads/pwads sadly (for now)
         if len(self.wads) > 0 or len(self.extraiwads) > 0:
             host_str += ' -file'
@@ -180,6 +182,7 @@ class DoomServer:
             host_str += ' +sv_forcepassword true +sv_password "' + self.password + '"'
         if self.joinpassword is not None:
             host_str += ' +sv_forcejoinpassword true +sv_joinpassword "' + self.joinpassword + '"'
+        return host_commands
         return host_str
 
 

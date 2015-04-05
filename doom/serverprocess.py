@@ -28,10 +28,3 @@ class ServerProcess():
     #   The commands to use, example: ['zandronum', '-host', 'cooperative 1']
     def start_server(self):
         self.process = psutil.Popen(self.host_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-
-    # NOTE: Idea inspired from: http://stackoverflow.com/questions/5173945/python-monitoring-stderr-and-stdout-of-a-subprocess
-    def read_stdout_until_end(self):
-        while self.process.poll() is None:
-            line = self.process.stdout.readline()
-            if line:
-                print(line)  # TODO - Put reasonable stuff here later

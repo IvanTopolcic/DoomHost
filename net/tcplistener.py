@@ -16,7 +16,8 @@
 import json
 import socket
 import time
-from doom import doomserver as doomserver
+from doom import doomserver
+from output import printlogger
 
 
 class TCPListener():
@@ -34,7 +35,7 @@ class TCPListener():
             if hostname == address:
                 if unbantime < int(time.time()):
                     del self._blacklist[i]
-                    print("Ban on {} expired.".format(hostname))
+                    printlogger.write_console(printlogger.LEVEL_STATUS, "Ban on {} expired.".format(hostname))
                     return False
                 else:
                     return True
@@ -42,21 +43,21 @@ class TCPListener():
 
     # Main listener function
     def serve(self):
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((self._hostname, self._port))
         self.socket.listen(True)
-        print("Listening on {}:{}".format(self._hostname, self._port))
+        printlogger.write_console(printlogger.LEVEL_OK, "Listening on {}:{}".format(self._hostname, self._port))
         while True:
             connection, address = self.socket.accept()
-            print("Got something")
             if self.is_banned(address[0]):
-                print("Banned IP {} connecting, ignoring request.".format(address[0]))
+                printlogger.write_console(printlogger.LEVEL_STATUS, "Banned IP {} connecting, ignoring request.".format(address[0]))
                 connection.send(b"{'status': 0, 'reply':'IP address is banned.'}")
                 connection.close()
                 continue
             try:
                 data = json.loads(connection.recv(2048).decode("UTF-8"))
             except ValueError:
-                print("Received incorrectly formatted JSON string from {}".format(address[0]))
+                printlogger.write_console(printlogger.LEVEL_WARNING, "Received incorrectly formatted JSON string from {}".format(address[0]))
                 connection.send(b"{'status': 0, 'reply':'Received incorrectly formatted JSON string.'}")
                 connection.close()
                 continue
@@ -69,10 +70,10 @@ class TCPListener():
                         if doomserver.is_valid_server(data):
                             doomserver.DoomServer(data, self.doomhost)
                         else:
-                            print("Received server host request without all information, ignoring...")
+                            printlogger.write_console(printlogger.LEVEL_WARNING, "Received server host request without all information, ignoring...")
                     connection.close()
                 else:
-                    print("Incorrect secret from {}, banning address for 3 seconds.".format(address[0]))
+                    printlogger.write_console(printlogger.LEVEL_WARNING, "Incorrect secret from {}, banning address for 3 seconds.".format(address[0]))
                     connection.send(b"{'status': 0, 'reply':'Incorrect secret received.'}")
                     connection.close()
                     # If not already in our blacklist, ban the IP for 3 seconds

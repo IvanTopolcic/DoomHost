@@ -19,10 +19,13 @@ from mysql import mysql
 from net import tcplistener
 import threading
 import atexit
+from output import printlogger
 
 
 class DoomHost:
     def __init__(self):
+        # This needs to be called or else colored outputs won't work on windows
+        printlogger.init()
         # Attempt to load configuration file
         try:
             # Check to see if they specify a custom configuration file
@@ -31,14 +34,14 @@ class DoomHost:
             else:
                 config = open('config.json', 'r')
             self.settings = json.load(config)
-            # User has not filled out the secret, generate one randomly for them
+            # User has not filled out the secret
             if self.settings['network']['secret'] == "fill this in with something random":
-                print("Please change the Network Secret in the configuration file.")
+                printlogger.write_console(printlogger.LEVEL_ERROR, "Please change the Network Secret in the configuration file.")
                 sys.exit(1)
-            print("Loaded configuration file.")
+            printlogger.write_console(printlogger.LEVEL_OK, "Loaded configuration file.")
         except FileNotFoundError as e:
-            print("Configuration file not found. Please create a config.json or run with: python doomhost.py your_config.json")
-            print(e)
+            printlogger.write_console(pringlogger.LEVEL_ERROR, "Configuration file not found. \
+                Please create a config.json or run with: python doomhost.py your_config.json")
             sys.exit(1)
         # Check to see if mysql database settings are correct
         self.db = mysql.MySQL(self.settings['mysql']['hostname'],
@@ -48,9 +51,9 @@ class DoomHost:
         try:
             self.db.connect()
         except mysql.pymysql.MySQLError as e:
-            print("MySQL configuration error: {}".format(e))
+            printlogger.write_console(printlogger.LEVEL_ERROR, "MySQL configuration error: {}".format(e))
             sys.exit(1)
-        print("MySQL connection succeeded!")
+        printlogger.write_console(printlogger.LEVEL_OK, "MySQL connection succeeded!")
         # Attempt to start our TCP server
         self.tcp_listener = tcplistener.TCPListener(self, self.settings['network']['hostname'],
                                                 self.settings['network']['port'],
@@ -61,7 +64,7 @@ class DoomHost:
 # Shutdown hook
 def _cleanup(tcp_listener):
     tcp_listener.socket.close()
-    print("\nCleaning up...")
+    printlogger.write_console(printlogger.LEVEL_STATUS, "Cleaning up...")
 
 try:
     host = DoomHost()
