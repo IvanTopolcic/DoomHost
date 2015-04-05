@@ -33,10 +33,13 @@ class TCPListener():
         self._port = port
         self._secret = secret
         self._blacklist = []
+        # Since our listener isn't threaded, this should be more convenient
+        self.connection = None
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    def reply(self, connection, status, message):
-        connection.send(bytes("{'status': " + str(status) + ", 'reply': '" + message + "'}", encoding='UTF-8'))
+    # Sends a reply to the client
+    def reply(self, status, message):
+        self.connection.send(bytes("{'status': " + str(status) + ", 'reply': '" + message + "'}", encoding='UTF-8'))
 
     # Check if an IP address is banned
     def is_banned(self, address):
@@ -57,18 +60,18 @@ class TCPListener():
         self.socket.listen(True)
         log(LEVEL_OK, "Listening on {}:{}".format(self._hostname, self._port))
         while True:
-            connection, address = self.socket.accept()
+            self.connection, address = self.socket.accept()
             if self.is_banned(address[0]):
                 log(LEVEL_STATUS, "Banned IP {} connecting, ignoring request.".format(address[0]))
                 self.reply(self.STATUS_ERROR, "Your IP address is banned.")
-                connection.close()
+                self.connection.close()
                 continue
             try:
-                data = json.loads(connection.recv(2048).decode("UTF-8"))
+                data = json.loads(self.connection.recv(2048).decode("UTF-8"))
             except ValueError:
                 log(LEVEL_WARNING, "Received incorrectly formatted JSON string from {}".format(address[0]))
                 self.reply(self.STATUS_ERROR, "Looks like there was an error processing your request. Please try again.")
-                connection.close()
+                self.connection.close()
                 continue
             if not data:
                 break
@@ -76,15 +79,27 @@ class TCPListener():
                 if data['secret'] == self._secret:
                     # Process the packet
                     if data['action'] == 'host':
+                        log(LEVEL_STATUS, "Processing host action from {}".format(address[0]))
                         if doomserver.is_valid_server(data):
                             doomserver.DoomServer(data, self.doomhost)
                         else:
                             log(LEVEL_WARNING, "Received server host request without all information, ignoring...")
-                    connection.close()
+                    if data['action'] == 'kill':
+                        log(LEVEL_STATUS, "Processing kill action from {}".format(address[0]))
+                        server = self.doomhost.get_server(data['port'])
+                        if server is not None:
+                            if server.status is not server.SERVER_STARTING:
+                                server.process.kill_server()
+                                self.reply(self.STATUS_OK, "Killed server.")
+                            else:
+                                self.reply(self.STATUS_ERROR, "Server must load up before being killed.")
+                        else:
+                            self.reply(self.STATUS_ERROR, "Server running on that port does not exist.")
+                    self.connection.close()
                 else:
                     log(LEVEL_WARNING, "Incorrect secret from {}, banning address for 3 seconds.".format(address[0]))
                     self.reply(self.STATUS_ERROR, "Received incorrect secret.")
-                    connection.close()
+                    self.connection.close()
                     # If not already in our blacklist, ban the IP for 3 seconds
                     banned = False
                     for hostname, bantime in self._blacklist:

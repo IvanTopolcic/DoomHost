@@ -22,8 +22,13 @@ from mysql import mysql
 from net import tcplistener
 from output.printlogger import *
 
-
+# The main DoomHost class
+# Controls general startup as well as server addition/removal
 class DoomHost:
+
+    # A list containing all of our server objects
+    servers = []
+
     def __init__(self):
         # This needs to be called or else colored outputs won't work on windows
         init()
@@ -63,13 +68,31 @@ class DoomHost:
         self.tcp_listener = tcplistener.TCPListener(self, self.settings['network']['hostname'],
                                                 self.settings['network']['port'],
                                                 self.settings['network']['secret'])
-        atexit.register(_cleanup, self.tcp_listener)
+        atexit.register(_cleanup, self)
         threading.Thread(target=self.tcp_listener.serve).run()
 
+    # Retrieves a server on given port
+    def get_server(self, port):
+        for server in self.servers:
+            if server.port == port:
+                return server
+        return None
+
+    # Removes a server from our list
+    def remove_server(self, server):
+        self.servers.remove(server)
+
+    # Adds a server to our list
+    def add_server(self, server):
+        self.servers.append(server)
+
+
 # Shutdown hook
-def _cleanup(tcp_listener):
-    tcp_listener.socket.close()
+def _cleanup(doomhost):
     log(LEVEL_STATUS, "Cleaning up...")
+    doomhost.tcp_listener.socket.close()
+    for server in doomhost.servers:
+        server.process.kill_server()
 
 try:
     host = DoomHost()

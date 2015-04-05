@@ -55,10 +55,19 @@ SERVER_HOST_FIELDS = ['hostname', 'iwad', 'gamemode', 'wads', 'extraiwads', 'ski
 #
 #   Exception: Anything else if the string is corrupt when JSON tries to parse the
 #              string.
+
 class DoomServer:
+
+    # Server status
+    SERVER_STARTING = 0
+    SERVER_RUNNING = 1
+    SERVER_CLOSED = 2
+
     def __init__(self, json_data, doomhost):
+        self.owner = "Jenova"
         self.doomhost = doomhost
         self.parameters = []
+        self.status = self.SERVER_STARTING
         self.json_data = json_data
         self.hostname = self.json_data['host_info']['hostname']
         self.iwad = self.json_data['host_info']['iwad']
@@ -67,6 +76,7 @@ class DoomServer:
             # Silently set the default gamemode type
             self.gamemode = "coop"
         # These fields are optional and will turn to default values if not specified
+        self.port = self.get_host_value(int, 'port', 16000)
         self.wads = self.get_host_value(list, 'wads', [])
         self.extraiwads = self.get_host_value(list, 'extraiwads', []) # For the people who want to load two iwads
         self.skill = self.get_host_value(int, 'skill', 4)
@@ -97,8 +107,11 @@ class DoomServer:
         if 'skill' not in self.json_data and self.gamemode in GAMEMODE_COOP_TYPES:
             self.skill = 3
         self.host_parameters = [doomhost.settings['zandronum']['executable'], '-host']
-        self.process = serverprocess.ServerProcess(self.get_host_command())
-        threading.Thread(target=self.process.start_server())
+        self.host_command = self.get_host_command()
+        self.process = serverprocess.ServerProcess(self)
+        self.doomhost.add_server(self)
+        thread = threading.Thread(target=self.process.start_server)
+        thread.start()
 
     # A more readable method for assigning default values if it's not in the json data.
     # This is not intended for external usage outside of the class.

@@ -16,15 +16,32 @@
 import subprocess
 import psutil
 import threading
+from output.printlogger import *
 
 
 class ServerProcess():
-    def __init__(self, host_command):
+    def __init__(self, server):
+        self.server = server
         self.process = None
-        self.host_command = host_command
+        self.host_command = server.host_command
 
     # Starts a process from the command list
     # command_list:
     #   The commands to use, example: ['zandronum', '-host', 'cooperative 1']
     def start_server(self):
         self.process = psutil.Popen(self.host_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        for line in self.process.stdout:
+            if self.server.status == self.server.SERVER_STARTING:
+                if line == "UDP Initialized.\n":
+                    log(LEVEL_OK, "Server from {} on port {} started successfully.".format(self.server.owner, self.server.port))
+                    self.server.status = self.server.SERVER_RUNNING
+        # This means our program terminated
+        if self.server.status == self.server.SERVER_STARTING:
+            self.server.doomhost.tcp_listener.reply(self.server.doomhost.tcp_listener.STATUS_ERROR, "There was a problem starting your server.")
+        log(LEVEL_OK, "Server from {} on port {} was stopped.".format(self.server.owner, self.server.port))
+        if self.server.status == self.server.SERVER_RUNNING:
+            self.server.doomhost.remove_server(self.server)
+        self.server.status = self.server.SERVER_CLOSED
+
+    def kill_server(self):
+        self.process.kill()
