@@ -14,6 +14,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from colorama import init, Fore, Style
+from datetime import datetime
 
 # Status should be used for notifying the user of events that are expected, a received packet for example
 LEVEL_STATUS = 0
@@ -27,6 +28,9 @@ LEVEL_ERROR = 2
 # Ok should be used for notifying the user of things that worked (loaded configuration, database connection established)
 LEVEL_OK = 3
 
+# Our logfile
+LOGFILE = "logfile.txt"
+
 
 # Neatly prints output to the console
 def write_console(level, line):
@@ -38,3 +42,23 @@ def write_console(level, line):
         print('[ ' + Fore.RED + 'Error' + Fore.RESET + ' ] ' + line)
     elif level == LEVEL_OK:
         print('[ ' + Fore.GREEN + 'Ok' + Fore.RESET + ' ] ' + line)
+
+# Logs the message to our logfile
+def write_logfile(level, line):
+    f = open('logfile.txt', 'a')
+    f.write(datetime.now().isoformat() + ' - ')
+    if level == LEVEL_STATUS:
+        f.write('[ Status ] ' + line)
+    elif level == LEVEL_WARNING:
+        f.write('[ Warning ] ' + line)
+    elif level == LEVEL_ERROR:
+        f.write('[ Error ] ' + line)
+    elif level == LEVEL_OK:
+        f.write('[ Ok ] ' + line)
+    f.write('\n')
+    f.close()
+
+# Logs and prints
+def log(level, line):
+    write_console(level, line)
+    write_logfile(level, line)
