@@ -80,6 +80,10 @@ class TCPListener():
                     # Process the packet
                     if data['action'] == 'host':
                         log(LEVEL_STATUS, "Processing host action from {}".format(address[0]))
+                        if self.doomhost.get_first_free_port() is None:
+                            self.reply(self.STATUS_ERROR, "The global server limit has been reached.")
+                            log(LEVEL_WARNING, "The global server limit has been reached.")
+                            continue
                         if doomserver.is_valid_server(data):
                             doomserver.DoomServer(data, self.doomhost)
                         else:

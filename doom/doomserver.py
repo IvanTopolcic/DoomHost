@@ -64,8 +64,9 @@ class DoomServer:
     SERVER_CLOSED = 2
 
     def __init__(self, json_data, doomhost):
-        self.owner = "Jenova"
         self.doomhost = doomhost
+        self.owner = "Jenova"
+        self.port = doomhost.get_first_free_port()
         self.parameters = []
         self.status = self.SERVER_STARTING
         self.json_data = json_data
@@ -76,7 +77,6 @@ class DoomServer:
             # Silently set the default gamemode type
             self.gamemode = "coop"
         # These fields are optional and will turn to default values if not specified
-        self.port = self.get_host_value(int, 'port', 16000)
         self.wads = self.get_host_value(list, 'wads', [])
         self.extraiwads = self.get_host_value(list, 'extraiwads', []) # For the people who want to load two iwads
         self.skill = self.get_host_value(int, 'skill', 4)
@@ -127,76 +127,94 @@ class DoomServer:
     def should_autorestart(self):
         return self.autorestart
 
-    # Creates the command line string.
+    # Creates the command line list
     def get_host_command(self):
         host_commands = []
-        host_str = self.doomhost.settings['zandronum']['executable']
         host_commands.append(self.doomhost.settings['zandronum']['executable'])
         host_commands.append('-host')
-        if self.doomhost.settings['zandronum']['use_host_param']:
-            host_str += ' -host'
-        host_str += ' +sv_hostname "' + self.doomhost.settings['zandronum']['host_name'] + self.hostname + '"'
-        host_str += ' -iwad ' + self.doomhost.settings['zandronum']['iwad_directory'] + self.iwad + ' '
+        host_commands.append('-port')
+        host_commands.append(str(self.doomhost.get_first_free_port()))
+        host_commands.append('+sv_hostname')
+        host_commands.append(self.doomhost.settings['zandronum']['host_name'] + self.hostname)
         host_commands.append('-iwad')
         host_commands.append(self.doomhost.settings['zandronum']['iwad_directory'] + self.iwad)
         # If the data is on, append the two wads to the wad list at the beginning as a workaround
         if self.data:
             self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_data_file'])
-            self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_actors_file']) # This is 2nd because we want it prepended to the very front
+            self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_actors_file'])
         # If textcolors is on, append it to the end of the wads list
         # if self.textcolors:
         #    self.wads.append(self.doomhost.settings['zandronum']['textcolours_file'])
         # We need some hacky stuff to combine iwads/pwads sadly (for now)
         if len(self.wads) > 0 or len(self.extraiwads) > 0:
-            host_str += ' -file'
             if len(self.extraiwads) > 0:
                 for iwadfile in self.extraiwads:
-                    host_str += ' ' + self.doomhost.settings['zandronum']['iwad_directory'] + iwadfile + ','
+                    host_commands.append('-file')
+                    host_commands.append(self.doomhost.settings['zandronum']['iwad_directory'] + iwadfile)
             if len(self.wads) > 0:
                 for wadfile in self.wads:
-                    host_str += ' ' + self.doomhost.settings['zandronum']['wad_directory'] + wadfile + ','
-            host_str = host_str[:-1] # Since we added wads, we have a trailing comma that must be removed
-        host_str += self.gamemode + ' 1'
-        host_str += ' -skill ' + str(self.skill)
+                    host_commands.append('-file')
+                    host_commands.append(self.doomhost.settings['zandronum']['iwad_directory'] + wadfile)
+        host_commands.append(self.gamemode)
+        host_commands.append('true')
+        host_commands.append('-skill')
+        host_commands.append(str(self.skill))
         if self.config is not None:
-            host_str += ' +exec "' + self.doomhost.settings['zandronum']['cfg_directory'] + self.config + '"'
+            host_commands.append('+exec')
+            host_commands.append(self.doomhost.settings['zandronum']['cfg_directory'] + self.config)
         if self.dmflags > 0:
-            host_str += ' +dmflags ' + str(self.dmflags)
+            host_commands.append('+dmflags')
+            host_commands.append(str(self.dmflags))
         if self.dmflags2 > 0:
-            host_str += ' +dmflags2 ' + str(self.dmflags2)
-        if self.dmflags3 > 0:
-            host_str += ' +dmflags3 ' + str(self.dmflags3)
+            host_commands.append('+dmflags2')
+            host_commands.append(str(self.dmflags2))
         if self.zadmflags > 0:
-            host_str += ' +zadmflags ' + str(self.zadmflags)
+            host_commands.append('+zadmflags')
+            host_commands.append(str(self.zadmflags))
         if self.compatflags > 0:
-            host_str += ' +compatflags ' + str(self.compatflags)
-        if self.compatflags2 > 0:
-            host_str += ' +compatflags2 ' + str(self.compatflags2)
+            host_commands.append('+compatflags')
+            host_commands.append(str(self.compatflags))
         if self.zacompatflags > 0:
-            host_str += ' +zacompatflags ' + str(self.zacompatflags)
+            host_commands.append('+zacompatflags')
+            host_commands.append(str(self.zacompatflags))
         if self.instagib:
-            host_str += ' +instagib 1'
+            host_commands.append('+instagib')
+            host_commands.append('true')
         if self.buckshot:
-            host_str += ' +buckshot 1'
+            host_commands.append('+buckshot')
+            host_commands.append('true')
         if self.fraglimit > 0:
-            host_str += ' +fraglimit ' + str(self.fraglimit)
+            host_commands.append('+fraglimit')
+            host_commands.append(str(self.fraglimit))
         if self.pointlimit > 0:
-            host_str += ' +pointlimit ' + str(self.pointlimit)
+            host_commands.append('+pointlimit')
+            host_commands.append(str(self.pointlimit))
         if self.duellimit > 0:
-            host_str += ' +duellimit ' + str(self.duellimit)
+            host_commands.append('+duellimit')
+            host_commands.append(str(self.duellimit))
         if self.timelimit > 0:
-            host_str += ' +timelimit ' + str(self.timelimit)
-        host_str += ' +sv_maxclients ' + str(self.maxclients)
-        host_str += ' +sv_maxplayers ' + str(self.maxplayers)
+            host_commands.append('+timelimit')
+            host_commands.append(str(self.timelimit))
+        host_commands.append('+sv_maxclients')
+        host_commands.append(str(self.maxclients))
+        host_commands.append('+sv_maxplayers')
+        host_commands.append(str(self.maxplayers))
         if self.maxlives > 0:
-            host_str += ' +sv_lives ' + str(self.maxlives)
-        host_str += ' +sv_suddendeath ' + ('true' if self.suddendeath else 'false')
+            host_commands.append('+sv_maxlives')
+            host_commands.append(str(self.maxlives))
+        host_commands.append('+sv_suddendeath')
+        host_commands.append('true' if self.suddendeath else 'false')
         if self.password is not None:
-            host_str += ' +sv_forcepassword true +sv_password "' + self.password + '"'
+            host_commands.append('+sv_forcepassword')
+            host_commands.append('true')
+            host_commands.append('+sv_password')
+            host_commands.append(str(self.password))
         if self.joinpassword is not None:
-            host_str += ' +sv_forcejoinpassword true +sv_joinpassword "' + self.joinpassword + '"'
+            host_commands.append('+sv_forcejoinpassword')
+            host_commands.append('true')
+            host_commands.append('+sv_joinpassword')
+            host_commands.append(str(self.joinpassword))
         return host_commands
-        return host_str
 
 
 # Checks to see if a server has passed all checks

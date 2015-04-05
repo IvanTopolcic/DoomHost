@@ -86,6 +86,13 @@ class DoomHost:
     def add_server(self, server):
         self.servers.append(server)
 
+    # Gets the first free port
+    def get_first_free_port(self):
+        for temp_port in range(self.settings['zandronum']['min_port'], self.settings['zandronum']['max_port']):
+            if self.get_server(temp_port) is None:
+                return temp_port
+        return None
+
 
 # Shutdown hook
 def _cleanup(doomhost):
