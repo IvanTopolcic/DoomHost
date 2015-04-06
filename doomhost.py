@@ -128,6 +128,15 @@ class DoomHost:
                 return temp_port
         return None
 
+    def check_wad_exists(self, file):
+        return True if os.path.isfile(self.settings['zandronum']['directories']['wad_directory'] + file) else False
+
+    def check_iwad_exists(self, file):
+        return True if os.path.isfile(self.settings['zandronum']['directories']['iwad_directory'] + file) else False
+
+    def check_config_exists(self, file):
+        return True if os.path.isfile(self.settings['zandronum']['directories']['cfg_directory'] + file) else False
+
 
 # Shutdown hook
 def _cleanup(doomhost):
