@@ -59,6 +59,17 @@ class DoomHost:
         if not os.path.isfile("logfile.txt"):
             open("logfile.txt", 'w+')
             log(LEVEL_OK, "Created logfile.txt")
+        # Check to see if our directories exist, and create them if not
+        for logfile, location in self.settings['zandronum']['directories'].items():
+            if not os.path.exists(location):
+                log(LEVEL_STATUS, "{} does not exist, creating it...".format(logfile))
+                try:
+                    os.makedirs(location)
+                except OSError:
+                    log(LEVEL_CRITICAL, "Couldn't create {} , quitting.".format(logfile))
+                    sys.exit(1)
+            else:
+                log(LEVEL_OK, "{} exists.".format(logfile))
         # Check to see if mysql database settings are correct
         self.db = mysql.MySQL(self.settings['mysql']['hostname'],
                               self.settings['mysql']['username'],
