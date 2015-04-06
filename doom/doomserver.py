@@ -70,9 +70,9 @@ class DoomServer:
         self.parameters = []
         self.status = self.SERVER_STARTING
         self.json_data = json_data
-        self.hostname = self.json_data['host_info']['hostname']
-        self.iwad = self.json_data['host_info']['iwad']
-        self.gamemode = self.json_data['host_info']['gamemode']
+        self.hostname = self.json_data['hostname']
+        self.iwad = self.json_data['iwad']
+        self.gamemode = self.json_data['gamemode']
         if self.gamemode not in ALL_GAMEMODE_TYPES:
             # Silently set the default gamemode type
             self.gamemode = "coop"
@@ -117,8 +117,8 @@ class DoomServer:
     # This is not intended for external usage outside of the class.
     # If a value is incorrect, it will silently use the default value
     def get_host_value(self, var_type, field_name, default_val):
-        if field_name in self.json_data['host_info']:
-            if not isinstance(self.json_data['host_info'][field_name], var_type):
+        if field_name in self.json_data:
+            if not isinstance(self.json_data[field_name], var_type):
                 # Silently return the default value
                 return default_val
         return self.json_data[field_name] if field_name in self.json_data else default_val
@@ -226,9 +226,8 @@ def is_valid_server(data):
 
 # Checks if the submitted data is fit for server creation
 def has_required_fields(data):
-    if 'host_info' in data:
-        if all(k in data['host_info'] for k in REQUIRED_JSON_HOST_FIELDS):
-            return True
+    if all(k in data for k in REQUIRED_JSON_HOST_FIELDS):
+        return True
     return False
 
 # A custom exception class for any parsing errors.

@@ -71,6 +71,16 @@ class DoomHost:
         atexit.register(_cleanup, self)
         threading.Thread(target=self.tcp_listener.serve).run()
 
+    # Checks if an object is a number, and whether or not its in our port range
+    def is_valid_port(self, port):
+        try:
+            val = int(port)
+        except ValueError:
+            return False
+        if port > self.settings['zandronum']['max_port'] or port < self.settings['zandronum']['min_port']:
+            return False
+        return True
+
     # Retrieves a server on given port
     def get_server(self, port):
         for server in self.servers:
