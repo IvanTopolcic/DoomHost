@@ -22,15 +22,15 @@ from output.printlogger import *
 class ServerProcess():
     def __init__(self, server):
         self.server = server
-        self.process = None
+        self.psutil_process = None
         self.host_command = server.host_command
 
     # Starts a process from the command list
     # command_list:
     #   The commands to use, example: ['zandronum', '-host', 'cooperative 1']
     def start_server(self):
-        self.process = psutil.Popen(self.host_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
-        for line in self.process.stdout:
+        self.psutil_process = psutil.Popen(self.host_command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        for line in self.psutil_process.stdout:
             if self.server.status == self.server.SERVER_STARTING:
                 if line == "UDP Initialized.\n":
                     log(LEVEL_OK, "Server from {} on port {} started successfully.".format(self.server.owner, self.server.port))
@@ -44,4 +44,4 @@ class ServerProcess():
         self.server.status = self.server.SERVER_CLOSED
 
     def kill_server(self):
-        self.process.kill()
+        self.psutil_process.kill()

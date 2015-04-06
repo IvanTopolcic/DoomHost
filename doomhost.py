@@ -13,14 +13,19 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import platform
 import json
 import sys
 import os.path
 import threading
 import atexit
+import signal
+import doom.servermonitor
 from mysql import mysql
 from net import tcplistener
 from output.printlogger import *
+
+working = False
 
 # The main DoomHost class
 # Controls general startup as well as server addition/removal
@@ -28,6 +33,7 @@ class DoomHost:
 
     # A list containing all of our server objects
     servers = []
+    working = True
 
     def __init__(self):
         # This needs to be called or else colored outputs won't work on windows
@@ -64,12 +70,20 @@ class DoomHost:
             log(LEVEL_ERROR, "MySQL configuration error: {}".format(e))
             sys.exit(1)
         log(LEVEL_OK, "MySQL connection succeeded!")
+        # Set up our threaded server monitor
+        if platform.system() == "Linux":
+            self.monitor = doom.servermonitor.ServerMonitor(self)
+            self.monitor_thread = threading.Thread(target=self.monitor.monitor_servers)
+            self.monitor_thread.daemon = True
+            self.monitor_thread.start()
+        else:
+            log(LEVEL_WARNING, "Server monitoring not supported on {}".format(platform.system()))
         # Attempt to start our TCP server
         self.tcp_listener = tcplistener.TCPListener(self, self.settings['network']['hostname'],
                                                 self.settings['network']['port'],
                                                 self.settings['network']['secret'])
         atexit.register(_cleanup, self)
-        threading.Thread(target=self.tcp_listener.serve).run()
+        self.tcp_listener.serve()
 
     # Checks if an object is a number, and whether or not its in our port range
     def is_valid_port(self, port):
@@ -108,11 +122,15 @@ class DoomHost:
 def _cleanup(doomhost):
     log(LEVEL_STATUS, "Cleaning up...")
     doomhost.tcp_listener.socket.close()
+    doomhost.working = False
     for server in doomhost.servers:
         server.process.kill_server()
 
-try:
-    host = DoomHost()
-except KeyboardInterrupt:
-    # Ignore keyboard interrupt stacktraces
-    pass
+def main(args):
+    try:
+        host =  DoomHost()
+    except:
+        pass
+
+if __name__ == '__main__':
+    main(sys.argv)
