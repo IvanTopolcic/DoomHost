@@ -10,7 +10,6 @@
         "skulltag_actors_file" : "skulltag_actors_1-1-1.pk3",
         "skulltag_data_file" : "skulltag_data_126.pk3",
         "textcolours_file" : "newtextcolours1_170.pk3",
-        "use_host_param" : false,
         "host_name" : "Custom Server Root Name "
     },
 
