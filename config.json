@@ -3,10 +3,12 @@
         "executable" : "zandronum",
         "min_port" : 10000,
         "max_port" : 10100,
-        "iwad_directory" : "iwads/",
-        "wad_directory" : "wads/",
-        "cfg_directory" : "cfgs/",
-        "log_directory" : "logs/",
+        "directories": {
+            "iwad_directory" : "iwads/",
+            "wad_directory" : "wads/",
+            "cfg_directory" : "cfgs/",
+            "log_directory" : "logs/"
+        },
         "skulltag_actors_file" : "skulltag_actors_1-1-1.pk3",
         "skulltag_data_file" : "skulltag_data_126.pk3",
         "textcolours_file" : "newtextcolours1_170.pk3",
