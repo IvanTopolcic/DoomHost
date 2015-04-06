@@ -137,7 +137,7 @@ class DoomServer:
         host_commands.append('+sv_hostname')
         host_commands.append(self.doomhost.settings['zandronum']['host_name'] + self.hostname)
         host_commands.append('-iwad')
-        host_commands.append(self.doomhost.settings['zandronum']['iwad_directory'] + self.iwad)
+        host_commands.append(self.doomhost.settings['zandronum']['directories']['iwad_directory'] + self.iwad)
         # If the data is on, append the two wads to the wad list at the beginning as a workaround
         if self.data:
             self.wads.insert(0, self.doomhost.settings['zandronum']['skulltag_data_file'])
@@ -150,18 +150,18 @@ class DoomServer:
             if len(self.extraiwads) > 0:
                 for iwadfile in self.extraiwads:
                     host_commands.append('-file')
-                    host_commands.append(self.doomhost.settings['zandronum']['iwad_directory'] + iwadfile)
+                    host_commands.append(self.doomhost.settings['zandronum']['directories']['iwad_directory'] + iwadfile)
             if len(self.wads) > 0:
                 for wadfile in self.wads:
                     host_commands.append('-file')
-                    host_commands.append(self.doomhost.settings['zandronum']['iwad_directory'] + wadfile)
+                    host_commands.append(self.doomhost.settings['zandronum']['directories']['wad_directory'] + wadfile)
         host_commands.append(self.gamemode)
         host_commands.append('true')
         host_commands.append('-skill')
         host_commands.append(str(self.skill))
         if self.config is not None:
             host_commands.append('+exec')
-            host_commands.append(self.doomhost.settings['zandronum']['cfg_directory'] + self.config)
+            host_commands.append(self.doomhost.settings['zandronum']['directories']['cfg_directory'] + self.config)
         if self.dmflags > 0:
             host_commands.append('+dmflags')
             host_commands.append(str(self.dmflags))

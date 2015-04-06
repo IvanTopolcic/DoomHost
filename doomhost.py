@@ -140,8 +140,8 @@ def _cleanup(doomhost):
 def main(args):
     try:
         host =  DoomHost()
-    except:
-        pass
+    except Exception as e:
+        print(e)
 
 if __name__ == '__main__':
     main(sys.argv)
