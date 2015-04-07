@@ -83,7 +83,9 @@ class MySQL:
             for wad in wads:
                 cursor.execute("INSERT INTO `servers_wads` (`server_id`, `name`) VALUES (%s, %s)", (insertion_id, wad))
 
-    def set_server_online(self, unique_id):
+    # Toggles a server between online and offline
+    # This is used twice -- once when the server starts, and once when it stops
+    def toggle_online(self, unique_id):
         connection = self.connect()
         cursor = connection.cursor()
-        return cursor.execute("UPDATE `servers` SET `online` = 1 WHERE `unique_id` = %s", unique_id)
+        return cursor.execute("UPDATE `servers` SET `online` = (1 - `online`) WHERE `unique_id` = %s", unique_id)
