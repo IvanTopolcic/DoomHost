@@ -48,8 +48,8 @@ class DoomHost:
                 config = open('config.json', 'r')
             self.settings = json.load(config)
             # User has not filled out the secret
-            if self.settings['network']['secret'] == "fill this in with something random":
-                log(LEVEL_ERROR, "Please change the Network Secret in the configuration file.")
+            if self.settings['network']['secret'] == "":
+                log(LEVEL_ERROR, "Please change the Network Secret in the configuration file to a random string.")
                 sys.exit(1)
             log(LEVEL_OK, "Loaded configuration file.")
         except FileNotFoundError as e:
