@@ -13,11 +13,11 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import threading
 import json
 import sys
+from output.printlogger import *
 from doom import serverprocess
-import threading
-
 
 # A list of all the critical fields that must be in the json file
 REQUIRED_JSON_HOST_FIELDS = ('hostname', 'iwad', 'gamemode')
@@ -82,7 +82,7 @@ class DoomServer:
         self.extraiwads = self.get_host_value(list, 'extraiwads', []) # For the people who want to load two iwads
         self.skill = self.get_host_value(int, 'skill', 4)
         self.data = self.get_host_value(bool, 'data', False)
-        self.config = self.get_host_value(str, 'config', None)
+        self.configs = self.get_host_value(list, 'configs', [])
         self.autorestart = self.get_host_value(bool, 'autorestart', False)
         self.dmflags = self.get_host_value(int, 'dmflags', 0)
         self.dmflags2 = self.get_host_value(int, 'dmflags2', 0)
@@ -108,6 +108,21 @@ class DoomServer:
         if 'skill' not in self.json_data and self.gamemode in GAMEMODE_COOP_TYPES:
             self.skill = 3
         self.host_parameters = [doomhost.settings['zandronum']['executable'], '-host']
+        # Verify that our files exist
+        for wad in self.wads:
+            if not self.doomhost.check_wad_exists(wad):
+                log(LEVEL_WARNING, "Tried loading a server with unknown wad {}".format(wad))
+                self.doomhost.tcp_listener.reply(self.doomhost.tcp_listener.STATUS_ERROR, "File {} not found in our repository.".format(wad))
+                return
+        for config in self.configs:
+            if not self.doomhost.check_config_exists(config):
+                log(LEVEL_WARNING, "Tried loading a server with unknow config {}".format(config))
+                self.doomhost.tcp_listener.reply(self.doomhost.tcp_listener.STATUS_ERROR, "Configuration file {} does not exist.".format(config))
+                return
+        # Check if our iwad exists
+        if not self.doomhost.check_iwad_exists(self.iwad):
+            log(LEVEL_WARNING, "Tried loading a server with unknown iwad {}".format(self.iwad))
+            self.doomhost.tcp_listener.reply(self.doomhost.tcp_listener.STATUS_ERROR, "IWAD {} does not exist.".format(self.iwad))
         self.host_command = self.get_host_command()
         self.process = serverprocess.ServerProcess(self)
         self.doomhost.add_server(self)
@@ -161,9 +176,10 @@ class DoomServer:
         host_commands.append('true')
         host_commands.append('-skill')
         host_commands.append(str(self.skill))
-        if self.config is not None:
-            host_commands.append('+exec')
-            host_commands.append(self.doomhost.settings['zandronum']['directories']['cfg_directory'] + self.config)
+        if self.configs:
+            for config in self.configs:
+                host_commands.append('+exec')
+                host_commands.append(self.doomhost.settings['zandronum']['directories']['cfg_directory'] + self.config)
         if self.dmflags > 0:
             host_commands.append('+dmflags')
             host_commands.append(str(self.dmflags))
