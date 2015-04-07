@@ -17,6 +17,7 @@
 
     "network" : {
         "hostname" : "127.0.0.1",
+        "public_ip" : "127.0.0.1",
         "port" : 23456,
         "secret" : "fill this in with something random"
     },
