@@ -13,6 +13,7 @@
 # You should have received a copy of the GNU Affero General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import uuid
 import platform
 import json
 import sys
@@ -127,6 +128,10 @@ class DoomHost:
             if self.get_server(temp_port) is None:
                 return temp_port
         return None
+
+    # Generate a random 32 character hex string
+    def generate_unique_id(self):
+        return uuid.uuid4().hex
 
     def check_wad_exists(self, file):
         return True if os.path.isfile(self.settings['zandronum']['directories']['wad_directory'] + file) else False

@@ -65,10 +65,11 @@ class DoomServer:
 
     def __init__(self, json_data, doomhost):
         self.doomhost = doomhost
-        self.owner = "Jenova"
         self.port = doomhost.get_first_free_port()
         self.parameters = []
         self.status = self.SERVER_STARTING
+        self.owner = json_data['user']
+        self.unique_id = doomhost.generate_unique_id()
         self.json_data = json_data
         self.hostname = self.json_data['hostname']
         self.iwad = self.json_data['iwad']
@@ -110,6 +111,7 @@ class DoomServer:
         self.host_command = self.get_host_command()
         self.process = serverprocess.ServerProcess(self)
         self.doomhost.add_server(self)
+        self.doomhost.db.add_server(json_data['user']['id'], self.unique_id, self.wads)
         thread = threading.Thread(target=self.process.start_server)
         thread.start()
 

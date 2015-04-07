@@ -33,12 +33,13 @@ class ServerProcess():
         for line in self.psutil_process.stdout:
             if self.server.status == self.server.SERVER_STARTING:
                 if line == "UDP Initialized.\n":
-                    log(LEVEL_OK, "Server from {} on port {} started successfully.".format(self.server.owner, self.server.port))
+                    self.server.doomhost.db.set_server_online(self.server.unique_id)
+                    log(LEVEL_OK, "Server from {} on port {} started successfully.".format(self.server.owner['username'], self.server.port))
                     self.server.status = self.server.SERVER_RUNNING
         # This means our program terminated
         if self.server.status == self.server.SERVER_STARTING:
             self.server.doomhost.tcp_listener.reply(self.server.doomhost.tcp_listener.STATUS_ERROR, "There was a problem starting your server.")
-        log(LEVEL_OK, "Server from {} on port {} was stopped.".format(self.server.owner, self.server.port))
+        log(LEVEL_OK, "Server from {} on port {} was stopped.".format(self.server.owner['name'], self.server.port))
         if self.server.status == self.server.SERVER_RUNNING:
             self.server.doomhost.remove_server(self.server)
         self.server.status = self.server.SERVER_CLOSED

@@ -15,6 +15,7 @@
 
 import pymysql
 import bcrypt
+from time import time
 
 
 # This class handles all database related information
@@ -28,17 +29,61 @@ class MySQL:
     def connect(self):
         return pymysql.connect(host=self._hostname, user=self._username, passwd=self._password, db=self._database, autocommit=True)
 
-    # Returns True on successful insertion
-    def create_user(self, username, password):
+    # -------------------------------------------------------------------------------------------- #
+    # ----------------------------------- User Functions ----------------------------------------- #
+    # -------------------------------------------------------------------------------------------- #
+
+    def check_login(self, username, password):
+        user = self.get_user(username)
+        if user is None:
+            return False
+        if bcrypt.hashpw(password.encode('utf-8'), user['password'].encode('utf-8')) != user['password'].encode('utf-8'):
+            return False
+        return True
+
+
+    def create_user(self, username, password, email):
         connection = self.connect()
         cursor = connection.cursor()
-        return cursor.execute("INSERT INTO `login` (`username`, `password`, `level`, `activated`, `server_limit`, `remember_token`) \
-            VALUES (%s, %s, 1, 0, 4, null)", (username, bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(14))))
+        return cursor.execute("INSERT INTO `login` (`username`, `password`, `email`, `level`, `activated`, `server_limit`, `remember_token`) \
+            VALUES (%s, %s, %s, 1, 0, 4, null)", (username, bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(14))))
 
+    def update_server_limit(self, user_id, server_limit):
+        connection = self.connect()
+        cursor = connection.cursor()
+        return cursor.execute("UPDATE `login` SET `server_limit` = %s WHERE `id` = %s", (server_limit, user_id))
 
+    def update_password(self, user_id, password):
+        connection = self.connect()
+        cursor = connection.cursor()
+        return cursor.execute("UPDATE `login` SET `password` = %s WHERE `id` = %s",
+            ((bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt(14)), user_id)))
+
+    def set_activated(self, user_id):
+        connection = self.connect()
+        cursor = connection.cursor()
+        return cursor.execute("UPDATE `login` SET `activated` = 1 WHERE `id` = %s", user_id)
 
     def get_user(self, username):
         connection = self.connect()
         cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM `login` WHERE `username` = %s", username)
+        cursor.execute("SELECT `id`, `username`, `password`, `level`, `activated`, `server_limit` FROM `login` WHERE `username` = %s", username)
         return cursor.fetchone()
+
+    # -------------------------------------------------------------------------------------------- #
+    # ----------------------------------- Server Functions --------------------------------------- #
+    # -------------------------------------------------------------------------------------------- #
+
+    def add_server(self, user_id, unique_id, wads):
+        connection = self.connect()
+        cursor = connection.cursor()
+        if cursor.execute("INSERT INTO `servers` (`unique_id`, `user_id`, `time_started`, `online`) VALUES (%s, %s, %s, 0)",
+            (unique_id, user_id, time())):
+            insertion_id = cursor.lastrowid
+            for wad in wads:
+                cursor.execute("INSERT INTO `servers_wads` (`server_id`, `name`) VALUES (%s, %s)", (insertion_id, wad))
+
+    def set_server_online(self, unique_id):
+        connection = self.connect()
+        cursor = connection.cursor()
+        return cursor.execute("UPDATE `servers` SET `online` = 1 WHERE `unique_id` = %s", unique_id)

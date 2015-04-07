@@ -31,8 +31,9 @@ class TCPListener():
     # The listener will error out if these are not present
     # NOTE: This does not validate the values, but only shows if they are present
     required_fields = {
-        'host': ['username', 'password', 'hostname', 'iwad', 'gamemode'],
-        'kill': ['username', 'password', 'port']
+        'general': ['username', 'password'],
+        'host':    ['hostname', 'iwad', 'gamemode'],
+        'kill':    ['port']
     }
 
     def __init__(self, doomhost, hostname, port, secret):
@@ -93,7 +94,14 @@ class TCPListener():
             if not data:
                 break
             if 'secret' in data:
-                if data['secret'] == self._secret:
+                if data['secret']:
+                    if not self.check_required_fields('general', data):
+                        continue
+                    if not self.doomhost.db.check_login(data['username'], data['password']):
+                        log(LEVEL_WARNING, "Invalid password for {} from {}".format(data['username'], address[0]))
+                        self.reply(self.STATUS_ERROR, "Invalid username or password combination.")
+                        continue
+                    data['user'] = self.doomhost.db.get_user(data['username'])
                     # Process the packet
                     if data['action'] == 'host':
                         log(LEVEL_STATUS, "Processing host action from {}".format(address[0]))
