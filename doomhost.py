@@ -48,7 +48,7 @@ class DoomHost:
                 config = open('config.json', 'r')
             self.settings = json.load(config)
             # User has not filled out the secret
-            if self.settings['network']['secret'] == "":
+            if self.settings['network']['secret'] == "" :
                 log(LEVEL_ERROR, "Please change the Network Secret in the configuration file to a random string.")
                 sys.exit(1)
             log(LEVEL_OK, "Loaded configuration file.")
@@ -152,10 +152,7 @@ def _cleanup(doomhost):
         server.process.kill_server()
 
 def main(args):
-    try:
-        host =  DoomHost()
-    except Exception as e:
-        print(e)
+    host =  DoomHost()
 
 if __name__ == '__main__':
     main(sys.argv)
