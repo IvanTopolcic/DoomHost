@@ -29,11 +29,6 @@ class TCPListener():
     STATUS_ERROR = 0
     STATUS_OK = 1
 
-    # Uploaded file types
-    FILETYPE_WAD = 0
-    FILETYPE_IWAD = 1
-    FILETYPE_CFG = 2
-
     # Required fields for specified actions
     # The listener will error out if these are not present
     # NOTE: This does not validate the values, but only shows if they are present
@@ -90,40 +85,12 @@ class TCPListener():
         extension = os.path.splitext(data['name'])[1][1:]
         if not self.check_required_fields('upload', data):
             return
-        if data['type'] == self.FILETYPE_WAD:
-            if extension != 'wad' and extension != 'pk3':
-                log(LEVEL_WARNING, "Attempted to upload a wad with {} extension".format(extension))
-                self.reply(self.STATUS_ERROR, "Cannot upload a wad with that extension.")
-                return
-            if self.doomhost.check_wad_exists(data['name']):
-                log(LEVEL_STATUS, "Tried to upload wad ({}) that already exists.".format(data['name']))
-                self.reply(self.STATUS_ERROR, "That wad already exists!")
-                return
-            location = 'wad_directory'
-        if data['type'] == self.FILETYPE_IWAD:
-            if extension != 'wad':
-                log(LEVEL_WARNING, "Attempted to upload an iwad with {} extension".format(extension))
-                self.reply(self.STATUS_ERROR, "Cannot upload an iwad with that extension.")
-                return
-            if self.doomhost.check_iwad_exists(data['name']):
-                log(LEVEL_STATUS, "Tried to upload iwad ({}) that already exists.".format(data['name']))
-                self.reply(self.STATUS_ERROR, "That iwad already exists!")
-                return
-            location = 'iwad_directory'
-        if data['type'] == self.FILETYPE_CFG:
-            if extension != 'cfg':
-                log(LEVEL_WARNING, "Attempted to upload a config with {} extension".format(extension))
-                self.reply(self.STATUS_ERROR, "Cannot upload a config with that extension.")
-                return
-            if self.doomhost.check_iwad_exists(data['name']):
-                log(LEVEL_STATUS, "Tried to upload config ({}) that already exists.".format(data['name']))
-                self.reply(self.STATUS_ERROR, "That config already exists!")
-                return
-            location = 'cfg_directory'
-        if data['type'] not in (self.FILETYPE_WAD, self.FILETYPE_IWAD, self.FILETYPE_CFG):
-            log(LEVEL_WARNING, "Invalid filetype ({}) sent from {}".format(data['type'], address))
-            self.reply(self.STATUS_ERROR, "Invalid filetype specified.")
+        file_check_result = self.doomhost.check_valid_file(data['type'], extension)
+        if file_check_result[0] == False:
+            log(LEVEL_WARNING, file_check_result[1])
+            self.reply(self.STATUS_ERROR, file_check_result[1])
             return
+        location = file_check_result[1]
         self.reply(self.STATUS_OK, "Downloading file")
         log(LEVEL_STATUS, "Downloading {} from {}".format(data['name'], address))
         timestamp = time.time()
@@ -141,8 +108,8 @@ class TCPListener():
             file_data = self.connection.recv(4096)
         f.close()
         # We have our file, move it to the appropriate directory
-        os.rename(data['name'] + '_' + str(timestamp), self.doomhost.settings['zandronum']['directories'][location] + data['name'])
-        log(LEVEL_OK, "Downloaded {} from {}.".format(data['name'], address))
+        os.rename(data['name'] + '_' + str(timestamp), location + data['name'])
+        log(LEVEL_OK, "Finished downloading {} and moved to {}".format(data['name'], location + data['name']))
         self.reply(self.STATUS_OK, "Successfully downloaded file")
 
     def process_host_packet(self, data, address):

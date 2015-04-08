@@ -36,6 +36,18 @@ class DoomHost:
     servers = []
     working = True
 
+    # Uploaded file types
+    FILETYPE_WAD = 0
+    FILETYPE_IWAD = 1
+    FILETYPE_CFG = 2
+
+    # A dict containing valid extensions for filetypes
+    allowed_extensions = {
+        FILETYPE_WAD  : ['wad', 'pk3'],
+        FILETYPE_IWAD : ['wad'],
+        FILETYPE_CFG  : ['cfg', 'txt']
+    }
+
     def __init__(self):
         # This needs to be called or else colored outputs won't work on windows
         init()
@@ -56,6 +68,12 @@ class DoomHost:
             log(LEVEL_ERROR, "Configuration file not found. \
                 Please create a config.json or run with: python doomhost.py your_config.json")
             sys.exit(1)
+        # Set a mapping of constants to their directory location
+        self.filetype_locations = {
+            self.FILETYPE_WAD  : self.settings['zandronum']['directories']['wad_directory'],
+            self.FILETYPE_IWAD : self.settings['zandronum']['directories']['iwad_directory'],
+            self.FILETYPE_CFG  : self.settings['zandronum']['directories']['cfg_directory']
+        }
         # Check if a logfile is present and create one if not
         if not os.path.isfile("logfile.txt"):
             open("logfile.txt", 'w+')
@@ -129,18 +147,37 @@ class DoomHost:
                 return temp_port
         return None
 
+    def check_valid_file(self, type, extension):
+        try:
+            type = int(type)
+        except ValueError:
+            return (False, "Invalid type sent.")
+        if type not in self.allowed_extensions:
+            return (False, "Invalid filetype sent.")
+        if extension not in self.allowed_extensions[type]:
+            return (False, "{} extensions are not allowed for that type of file.".format(extension))
+        return (True, self.filetype_locations[type])
+
     # Generate a random 32 character hex string
     def generate_unique_id(self):
         return uuid.uuid4().hex
 
-    def check_wad_exists(self, file):
-        return True if os.path.isfile(self.settings['zandronum']['directories']['wad_directory'] + file) else False
+    def check_file_exists(self, potential_file):
+        if extension in self.allowed_extensions[self.FILETYPE_WAD]:
+            return check_wad_exists(potential_file)
+        if extension in self.allowed_extensions[self.FILETYPE_IWAD]:
+            return check_iwad_exists(potential_file)
+        if extension in self.allowed_extensions[self.FILETYPE_CFG]:
+            return check_config_exists(potential_file)
 
-    def check_iwad_exists(self, file):
-        return True if os.path.isfile(self.settings['zandronum']['directories']['iwad_directory'] + file) else False
+    def check_wad_exists(self, potential_file):
+        return True if os.path.isfile(self.settings['zandronum']['directories']['wad_directory'] + potential_file) else False
 
-    def check_config_exists(self, file):
-        return True if os.path.isfile(self.settings['zandronum']['directories']['cfg_directory'] + file) else False
+    def check_iwad_exists(self, potential_file):
+        return True if os.path.isfile(self.settings['zandronum']['directories']['iwad_directory'] + potential_file) else False
+
+    def check_config_exists(self, potential_file):
+        return True if os.path.isfile(self.settings['zandronum']['directories']['cfg_directory'] + potential_file) else False
 
 
 # Shutdown hook
