@@ -17,6 +17,7 @@ import json
 import socket
 import time
 import struct
+import os
 from doom import doomserver
 from output.printlogger import *
 
@@ -64,7 +65,8 @@ class TCPListener():
 
     # Sends a reply to the client
     def reply(self, status, message):
-        self.connection.send(bytes("{'status': " + str(status) + ", 'reply': '" + message + "'}", encoding='UTF-8'))
+        reply = {'status': status, 'message': message}
+        self.connection.send(bytes(json.dumps(reply), encoding='utf-8'))
 
     # Check if an IP address is banned
     def is_banned(self, address):
@@ -81,25 +83,67 @@ class TCPListener():
     # Scans the packet received for our JSON string and returns a tuple containing the JSON string and the rest of the packet
     def extract_string(self, bytes):
         length = struct.unpack('h', bytes[:2])[0]
-        return (bytes[2:length+2].decode('utf-8'), bytes[length+2:len(bytes)])
+        return (bytes[2:length+2].decode('utf-8'), bytes[length+2:])
 
-    def process_upload_packet(self, data, address):
+    def process_upload_packet(self, data, address, rest):
+        data['name'] == data['name'].lower()
+        extension = os.path.splitext(data['name'])[1][1:]
         if not self.check_required_fields('upload', data):
             return
-        if self.doomhost.check_wad_exists(data['name']):
-            log(LEVEL_STATUS, "Tried to upload file ({}) that already exists.".format(data['name']))
-            self.reply(self.connection, "That wad already exists!")
+        if data['type'] == self.FILETYPE_WAD:
+            if extension != 'wad' and extension != 'pk3':
+                log(LEVEL_WARNING, "Attempted to upload a wad with {} extension".format(extension))
+                self.reply(self.STATUS_ERROR, "Cannot upload a wad with that extension.")
+                return
+            if self.doomhost.check_wad_exists(data['name']):
+                log(LEVEL_STATUS, "Tried to upload wad ({}) that already exists.".format(data['name']))
+                self.reply(self.STATUS_ERROR, "That wad already exists!")
+                return
+            location = 'wad_directory'
+        if data['type'] == self.FILETYPE_IWAD:
+            if extension != 'wad':
+                log(LEVEL_WARNING, "Attempted to upload an iwad with {} extension".format(extension))
+                self.reply(self.STATUS_ERROR, "Cannot upload an iwad with that extension.")
+                return
+            if self.doomhost.check_iwad_exists(data['name']):
+                log(LEVEL_STATUS, "Tried to upload iwad ({}) that already exists.".format(data['name']))
+                self.reply(self.STATUS_ERROR, "That iwad already exists!")
+                return
+            location = 'iwad_directory'
+        if data['type'] == self.FILETYPE_CFG:
+            if extension != 'cfg':
+                log(LEVEL_WARNING, "Attempted to upload a config with {} extension".format(extension))
+                self.reply(self.STATUS_ERROR, "Cannot upload a config with that extension.")
+                return
+            if self.doomhost.check_iwad_exists(data['name']):
+                log(LEVEL_STATUS, "Tried to upload config ({}) that already exists.".format(data['name']))
+                self.reply(self.STATUS_ERROR, "That config already exists!")
+                return
+            location = 'cfg_directory'
+        if data['type'] not in (self.FILETYPE_WAD, self.FILETYPE_IWAD, self.FILETYPE_CFG):
+            log(LEVEL_WARNING, "Invalid filetype ({}) sent from {}".format(data['type'], address))
+            self.reply(self.STATUS_ERROR, "Invalid filetype specified.")
             return
+        self.reply(self.STATUS_OK, "Downloading file")
+        log(LEVEL_STATUS, "Downloading {} from {}".format(data['name'], address))
+        timestamp = time.time()
         # Create a temporary file that we write to, which we'll move to our final directory later
-        f = open(data['name'], 'bw+')
+        f = open(data['name'] + '_' + str(timestamp), 'bw+')
         # Our first packet actually contained some data for the file that we need, write it!
         f.write(rest)
         # Since we're getting a large file, we need to keep listening for more information
         file_data = self.connection.recv(4096)
         while (file_data):
-            f.write(file_data)
+            f.write(file_data[:-1])
+            # Null terminator at the end of the byte sequence indicates that there is no more data being sent
+            if file_data[-1:] == b'\x00':
+                break
             file_data = self.connection.recv(4096)
         f.close()
+        # We have our file, move it to the appropriate directory
+        os.rename(data['name'] + '_' + str(timestamp), self.doomhost.settings['zandronum']['directories'][location] + data['name'])
+        log(LEVEL_OK, "Downloaded {} from {}.".format(data['name'], address))
+        self.reply(self.STATUS_OK, "Successfully downloaded file")
 
     def process_host_packet(self, data, address):
         log(LEVEL_STATUS, "Processing host action from {}".format(address))
@@ -168,7 +212,7 @@ class TCPListener():
                     data['user'] = self.doomhost.db.get_user(data['username'])
                     # Process the packet
                     if data['action'] == 'upload':
-                        self.process_upload_packet(data, address[0])
+                        self.process_upload_packet(data, address[0], rest)
                     if data['action'] == 'host':
                         self.process_host_packet(data, address[0])
                     elif data['action'] == 'kill':
