@@ -97,7 +97,7 @@ class TCPListener():
         # Create a temporary file that we write to, which we'll move to our final directory later
         f = open(data['name'] + '_' + str(timestamp), 'bw+')
         # Our first packet actually contained some data for the file that we need, write it!
-        f.write(rest)
+        f.write(rest[:-1])
         # Since we're getting a large file, we need to keep listening for more information
         file_data = self.connection.recv(4096)
         while (file_data):
@@ -159,7 +159,8 @@ class TCPListener():
                 continue
             packet = self.connection.recv(4096)
             try:
-                data = json.loads(self.extract_string(packet)[0])
+                data_raw = self.extract_string(packet)[0]
+                data = json.loads(data_raw)
                 rest = self.extract_string(packet)[1]
             except ValueError as e:
                 log(LEVEL_WARNING, "Received incorrectly formatted JSON string {} from {}".format(self.extract_string(packet)[0], address[0]))
