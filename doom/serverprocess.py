@@ -37,6 +37,7 @@ class ServerProcess():
                     self.server.doomhost.db.toggle_online(self.server.unique_id)
                     log(LEVEL_OK, "Server from {} on port {} started successfully.".format(self.server.owner['username'], self.server.port))
                     self.server.status = self.server.SERVER_RUNNING
+                    self.server.doomhost.tcp_listener.reply(self.server.doomhost.tcp_listener.STATUS_OK, "Server started!")
         # This means our program terminated
         if self.server.status == self.server.SERVER_STARTING:
             self.server.doomhost.tcp_listener.reply(self.server.doomhost.tcp_listener.STATUS_ERROR, "There was a problem starting your server.")
