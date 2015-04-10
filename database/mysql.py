@@ -20,11 +20,12 @@ from time import time
 
 # This class handles all database related information
 class MySQL:
-    def __init__(self, hostname, username, password, database):
-        self._hostname = hostname
-        self._username = username
-        self._password = password
-        self._database = database
+    def __init__(self, doomhost):
+        self.doomhost = doomhost
+        self._hostname = doomhost.settings['mysql']['hostname']
+        self._username = doomhost.settings['mysql']['username']
+        self._password = doomhost.settings['mysql']['password']
+        self._database = doomhost.settings['mysql']['database']
 
     def connect(self):
         return pymysql.connect(host=self._hostname, user=self._username, passwd=self._password, db=self._database, autocommit=True)
@@ -77,8 +78,8 @@ class MySQL:
     def add_server(self, user_id, unique_id, wads):
         connection = self.connect()
         cursor = connection.cursor()
-        if cursor.execute("INSERT INTO `servers` (`unique_id`, `user_id`, `time_started`, `online`) VALUES (%s, %s, %s, 0)",
-            (unique_id, user_id, time())):
+        if cursor.execute("INSERT INTO `servers` (`unique_id`, `user_id`, `time_started`, `online`, `listener`) VALUES (%s, %s, %s, 0, %s)",
+            (unique_id, user_id, time(), self.doomhost.settings['network']['listener_id'])):
             insertion_id = cursor.lastrowid
             for wad in wads:
                 cursor.execute("INSERT INTO `servers_wads` (`server_id`, `name`) VALUES (%s, %s)", (insertion_id, wad))

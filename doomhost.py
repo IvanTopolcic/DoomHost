@@ -22,7 +22,7 @@ import threading
 import atexit
 import signal
 import doom.servermonitor
-from mysql import mysql
+from database import mysql
 from net import tcplistener
 from output.printlogger import *
 
@@ -90,10 +90,7 @@ class DoomHost:
             else:
                 log(LEVEL_OK, "{} exists.".format(logfile))
         # Check to see if mysql database settings are correct
-        self.db = mysql.MySQL(self.settings['mysql']['hostname'],
-                              self.settings['mysql']['username'],
-                              self.settings['mysql']['password'],
-                              self.settings['mysql']['database'])
+        self.db = mysql.MySQL(self)
         try:
             self.db.connect()
         except mysql.pymysql.MySQLError as e:
