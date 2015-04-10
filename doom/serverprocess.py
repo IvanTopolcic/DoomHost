@@ -34,6 +34,7 @@ class ServerProcess():
             if self.server.status == self.server.SERVER_STARTING:
                 if line == "UDP Initialized.\n":
                     # Our server is online
+                    self.server.doomhost.db.update_port(self.server.unique_id, self.server.port)
                     self.server.doomhost.db.toggle_online(self.server.unique_id)
                     log(LEVEL_OK, "Server from {} on port {} started successfully.".format(self.server.owner['username'], self.server.port))
                     self.server.status = self.server.SERVER_RUNNING
